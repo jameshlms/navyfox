@@ -504,9 +504,11 @@ class TestInsertWarningOrder:
             events.append("append")
             return real_append(elem)
 
-        with patch("warnings.warn", side_effect=tracking_warn):
-            with patch.object(view, "_append_one", side_effect=tracking_append):
-                view.insert(0, Paragraph("B"))
+        with (
+            patch("warnings.warn", side_effect=tracking_warn),
+            patch.object(view, "_append_one", side_effect=tracking_append),
+        ):
+            view.insert(0, Paragraph("B"))
 
         assert events == ["warn", "append"], (
             f"Expected ['warn', 'append']; got {events!r} — warning fired after mutation"
