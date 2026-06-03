@@ -5,7 +5,6 @@ and writes four PNGs to docs/assets/:
 
   perf_write_time.png  — build + save time, NavyFox vs python-docx
   perf_read_time.png   — open + iterate time, NavyFox vs python-docx
-  perf_speedup.png     — speedup factor for both operations
   perf_size.png        — installed package size comparison
 
 Error bars are shown when benchmark_results.json contains stdev data
@@ -31,8 +30,6 @@ OUT_DIR = os.path.join(os.path.dirname(__file__), "..", "docs", "assets")
 
 NAVY_COLOR   = "#0C2340"   # NavyFox navy
 DOCX_COLOR   = "#E8952A"   # python-docx amber
-WRITE_COLOR  = "#0C2340"   # speedup chart — write bars
-READ_COLOR   = "#4A7FC1"   # speedup chart — read bars (lighter navy/slate)
 GRID_STYLE   = {"linestyle": "--", "alpha": 0.4}
 ERR_KW       = {"ecolor": "#555555", "capsize": 3, "capthick": 1, "elinewidth": 1}
 
@@ -116,56 +113,6 @@ def _time_chart(
     print(f"Wrote {out}")
 
 
-def _speedup_chart(
-    sizes: list[int],
-    write_docx: list[float], write_navy: list[float],
-    read_docx: list[float],  read_navy: list[float],
-) -> None:
-    write_speedups = [d / n for d, n in zip(write_docx, write_navy)]
-    read_speedups  = [d / n for d, n in zip(read_docx,  read_navy)]
-    labels = [f"{s:,}" for s in sizes]
-    x = np.arange(len(sizes))
-    bar_w = 0.35
-
-    fig, ax = plt.subplots(figsize=(10, 5))
-    fig.patch.set_facecolor("white")
-    ax.set_facecolor("white")
-
-    bars_w = ax.bar(x - bar_w / 2, write_speedups, bar_w, label="Write", color=WRITE_COLOR, zorder=3)
-    bars_r = ax.bar(x + bar_w / 2, read_speedups,  bar_w, label="Read",  color=READ_COLOR,  zorder=3)
-
-    all_speedups = write_speedups + read_speedups
-    top = max(abs(s) for s in all_speedups) * 1.18
-
-    for bars, speedups in ((bars_w, write_speedups), (bars_r, read_speedups)):
-        for bar, s in zip(bars, speedups):
-            label_y = bar.get_height() if s >= 0 else 0
-            ax.text(
-                bar.get_x() + bar.get_width() / 2,
-                label_y + top * 0.01,
-                f"{s:.1f}×",
-                ha="center", va="bottom",
-                fontsize=8, fontweight="bold", color="#333333",
-            )
-
-    ax.set_xticks(x)
-    ax.set_xticklabels(labels)
-    ax.set_xlabel("Number of paragraphs")
-    ax.set_ylabel("Speedup (× faster than python-docx)")
-    ax.set_title("NavyFox speedup over python-docx — write vs read")
-    ax.axhline(1, color="black", linewidth=0.8, linestyle="--")
-    ax.set_ylim(bottom=min(0, min(read_speedups) * 1.1), top=top)
-    ax.legend(framealpha=0)
-    ax.grid(axis="y", **GRID_STYLE)
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
-
-    fig.tight_layout()
-    out = os.path.join(OUT_DIR, "perf_speedup.png")
-    fig.savefig(out, dpi=150)
-    plt.close(fig)
-    print(f"Wrote {out}")
-
 
 def _dir_size_mb(path: str) -> float:
     total = sum(
@@ -244,7 +191,6 @@ def main() -> None:
         title="Read benchmark: open + iterate — NavyFox vs python-docx",
         out_name="perf_read_time.png",
     )
-    _speedup_chart(sizes, write_docx, write_navy, read_docx, read_navy)
     _size_chart()
 
 

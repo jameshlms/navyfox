@@ -75,16 +75,11 @@ Measures wall-clock time to construct a document with N paragraphs of plain text
 *__Figure 2 — Read benchmark (open + iterate, log scale).__
 Measures wall-clock time to open a .docx file and read the `.text` property of every paragraph and every table cell. Both libraries read the same reference files, which are created fresh with python-docx before each run to eliminate any format bias. NavyFox is faster at small document sizes but becomes slower above roughly 1 000 paragraphs. The reason: python-docx parses the entire ZIP archive into an lxml element tree on open, after which `.text` is a free in-memory attribute lookup. NavyFox keeps all state in the native layer, so each `.text` access is an individual ctypes round-trip into C# — fast per call, but the overhead accumulates at scale.*
 
-![Speedup over python-docx: write vs read](docs/assets/perf_speedup.png)
-
-*__Figure 3 — NavyFox speedup factor over python-docx.__
-A value of 1× means parity; above 1× means NavyFox is faster by that multiple; below 1× means NavyFox is slower. Write speedup (navy) grows steeply with document size — NavyFox is over 50× faster at 10 000 paragraphs — reflecting the native XML assembly advantage. Read speedup (slate blue) starts positive at small sizes but falls below 1× beyond ~1 000 paragraphs, reflecting the per-property FFI cost described in Figure 2.*
-
 **Package size trade-off.** The binary ships .NET 9 and the OpenXML SDK statically linked — no separate runtime installation needed. That makes the wheel ~85 MB versus ~2 MB for python-docx; a deliberate trade for zero runtime dependencies.
 
 ![Installed package size](docs/assets/perf_size.png)
 
-*__Figure 4 — Installed package size.__
+*__Figure 3 — Installed package size.__
 On-disk footprint measured from each library's installed directory. NavyFox is larger because it statically links the .NET 9 runtime and the Microsoft DocumentFormat.OpenXml SDK — there is no separate runtime to install. python-docx's smaller footprint reflects its pure-Python + lxml approach, but lxml itself must be present as a separate dependency.*
 
 > Run `python scripts/benchmark.py && python scripts/generate_charts.py` to reproduce. Error bars (±1 SD) are shown when benchmark data includes standard deviation.
