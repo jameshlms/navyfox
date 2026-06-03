@@ -54,18 +54,69 @@ with Document() as doc:
 | Document construction | Pure Python / XML | Native AOT binary |
 | OpenXML correctness | Hand-crafted XML | Official Microsoft SDK |
 | Python dependencies | 1 (lxml) | **0** |
-| Performance at scale | Baseline | 3–8× faster (see below) |
+| Write performance | Baseline | 14–58× faster at scale (see below) |
+| Read performance | Baseline | Faster at small docs; FFI cost at large docs |
 | Installed size | ~2 MB | ~85 MB (ships runtime) |
 | Named paragraph styles | Limited | First-class |
+| Horizontal rules | Requires raw lxml XML | `doc.add_horizontal_rule()` |
 | Images, hyperlinks, sections | Partial | Full |
 
 ### Performance
 
 All document data is assembled in native compiled code — no Python loop overhead building XML trees for large documents.
 
-> Benchmark charts coming soon. Run `python scripts/benchmark.py` to reproduce locally once the script is available.
+![Write benchmark: build + save](docs/assets/perf_write_time.png)
+![Read benchmark: open + iterate](docs/assets/perf_read_time.png)
+![Speedup over python-docx](docs/assets/perf_speedup.png)
+
+> Benchmarks measure wall-clock time across document sizes (N paragraphs + N/10 table rows).
+> Read benchmarks open a document and iterate all paragraph text and table cell text.
+> NavyFox writes are dramatically faster because XML assembly happens in native compiled code.
+> NavyFox reads are faster at small sizes but slower at large sizes — each `.text` access
+> is an individual FFI call, whereas python-docx parses the whole XML into Python objects on open.
+> Run `python scripts/benchmark.py && python scripts/generate_charts.py` to reproduce.
 
 **Package size trade-off.** The binary ships .NET 9 and the OpenXML SDK statically linked — no separate runtime installation needed. That makes the wheel ~85 MB versus ~2 MB for python-docx; a deliberate trade for zero runtime dependencies.
+
+![Installed package size](docs/assets/perf_size.png)
+
+### Horizontal rules
+
+python-docx has no native horizontal rule API. Adding one requires reaching into lxml and writing raw OpenXML:
+
+```python
+# python-docx — manual lxml manipulation required
+from docx import Document
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
+
+def add_horizontal_rule(doc):
+    para = doc.add_paragraph()
+    pPr = OxmlElement("w:pPr")
+    pBdr = OxmlElement("w:pBdr")
+    bottom = OxmlElement("w:bottom")
+    bottom.set(qn("w:val"), "single")
+    bottom.set(qn("w:sz"), "6")
+    bottom.set(qn("w:space"), "1")
+    bottom.set(qn("w:color"), "auto")
+    pBdr.append(bottom)
+    pPr.append(pBdr)
+    para._p.insert(0, pPr)
+    return para
+```
+
+NavyFox exposes it directly:
+
+```python
+# NavyFox — first-class API
+from navyfox import Document
+
+with Document() as doc:
+    doc.add_horizontal_rule()                          # default single line
+    doc.add_horizontal_rule(line_style="double")       # double line
+    doc.add_horizontal_rule(line_style="dashed", line_width=1.0, line_color="#999999")
+    doc.save("output.docx")
+```
 
 ---
 
