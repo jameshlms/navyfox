@@ -1,8 +1,8 @@
 using System.Text;
 using Xunit;
-using static BlueFox.Native.Tests.TestHelper;
+using static NavyFox.Native.Tests.TestHelper;
 
-namespace BlueFox.Native.Tests;
+namespace NavyFox.Native.Tests;
 
 /// <summary>
 /// Smoke tests for DocumentBuilder core logic via the generic property/collection API.
