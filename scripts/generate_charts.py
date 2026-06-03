@@ -8,6 +8,10 @@ and writes four PNGs to docs/assets/:
   perf_speedup.png     — speedup factor for both operations
   perf_size.png        — installed package size comparison
 
+Error bars are shown when benchmark_results.json contains stdev data
+(produced by the current benchmark.py). Older result files without stdev
+are loaded without error bars.
+
 Usage:
     python scripts/generate_charts.py
 """
@@ -25,31 +29,49 @@ import numpy as np
 RESULTS_PATH = os.path.join(os.path.dirname(__file__), "benchmark_results.json")
 OUT_DIR = os.path.join(os.path.dirname(__file__), "..", "docs", "assets")
 
-NAVY_COLOR   = "#581aa8"
-DOCX_COLOR   = "#1aa897"
-WRITE_COLOR  = "#581aa8"   # NavyFox write
-READ_COLOR   = "#9361d4"   # NavyFox read
+NAVY_COLOR   = "#0C2340"   # NavyFox navy
+DOCX_COLOR   = "#E8952A"   # python-docx amber
+WRITE_COLOR  = "#0C2340"   # speedup chart — write bars
+READ_COLOR   = "#4A7FC1"   # speedup chart — read bars (lighter navy/slate)
 GRID_STYLE   = {"linestyle": "--", "alpha": 0.4}
+ERR_KW       = {"ecolor": "#555555", "capsize": 3, "capthick": 1, "elinewidth": 1}
 
 
-def _load_results() -> tuple[list[int], list[float], list[float], list[float], list[float]]:
+def _extract(entry: dict | float) -> tuple[float, float]:
+    """Return (mean_ms, stdev_ms) from a JSON entry, handling both formats."""
+    if isinstance(entry, dict):
+        return entry["mean"] * 1000, entry.get("stdev", 0.0) * 1000
+    return entry * 1000, 0.0
+
+
+def _load_results() -> tuple[
+    list[int],
+    list[float], list[float], list[float], list[float],
+    list[float], list[float], list[float], list[float],
+]:
     with open(RESULTS_PATH) as f:
         data = json.load(f)
 
     sizes = sorted(int(k) for k in data["write"]["python_docx"])
 
-    write_docx  = [data["write"]["python_docx"][str(s)] * 1000 for s in sizes]
-    write_navy  = [data["write"]["navyfox"][str(s)]      * 1000 for s in sizes]
-    read_docx   = [data["read"]["python_docx"][str(s)]   * 1000 for s in sizes]
-    read_navy   = [data["read"]["navyfox"][str(s)]        * 1000 for s in sizes]
+    write_docx_m, write_docx_e = zip(*[_extract(data["write"]["python_docx"][str(s)]) for s in sizes])
+    write_navy_m, write_navy_e = zip(*[_extract(data["write"]["navyfox"][str(s)])      for s in sizes])
+    read_docx_m,  read_docx_e  = zip(*[_extract(data["read"]["python_docx"][str(s)])   for s in sizes])
+    read_navy_m,  read_navy_e  = zip(*[_extract(data["read"]["navyfox"][str(s)])        for s in sizes])
 
-    return sizes, write_docx, write_navy, read_docx, read_navy
+    return (
+        sizes,
+        list(write_docx_m), list(write_navy_m), list(read_docx_m), list(read_navy_m),
+        list(write_docx_e), list(write_navy_e), list(read_docx_e), list(read_navy_e),
+    )
 
 
 def _time_chart(
     sizes: list[int],
     navy_times: list[float],
     docx_times: list[float],
+    navy_err: list[float],
+    docx_err: list[float],
     title: str,
     out_name: str,
 ) -> None:
@@ -61,8 +83,19 @@ def _time_chart(
     fig.patch.set_facecolor("white")
     ax.set_facecolor("white")
 
-    ax.bar(x - bar_w / 2, navy_times, bar_w, label="NavyFox",     color=NAVY_COLOR, zorder=3)
-    ax.bar(x + bar_w / 2, docx_times, bar_w, label="python-docx", color=DOCX_COLOR, zorder=3)
+    navy_err_plot = navy_err if any(v > 0 for v in navy_err) else None
+    docx_err_plot = docx_err if any(v > 0 for v in docx_err) else None
+
+    ax.bar(
+        x - bar_w / 2, navy_times, bar_w,
+        label="NavyFox", color=NAVY_COLOR, zorder=3,
+        yerr=navy_err_plot, error_kw=ERR_KW,
+    )
+    ax.bar(
+        x + bar_w / 2, docx_times, bar_w,
+        label="python-docx", color=DOCX_COLOR, zorder=3,
+        yerr=docx_err_plot, error_kw=ERR_KW,
+    )
 
     ax.set_yscale("log")
     ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda v, _: f"{v:.4g} ms"))
@@ -85,10 +118,8 @@ def _time_chart(
 
 def _speedup_chart(
     sizes: list[int],
-    write_docx: list[float],
-    write_navy: list[float],
-    read_docx: list[float],
-    read_navy: list[float],
+    write_docx: list[float], write_navy: list[float],
+    read_docx: list[float],  read_navy: list[float],
 ) -> None:
     write_speedups = [d / n for d, n in zip(write_docx, write_navy)]
     read_speedups  = [d / n for d, n in zip(read_docx,  read_navy)]
@@ -104,13 +135,14 @@ def _speedup_chart(
     bars_r = ax.bar(x + bar_w / 2, read_speedups,  bar_w, label="Read",  color=READ_COLOR,  zorder=3)
 
     all_speedups = write_speedups + read_speedups
-    top = max(all_speedups) * 1.12
+    top = max(abs(s) for s in all_speedups) * 1.18
 
     for bars, speedups in ((bars_w, write_speedups), (bars_r, read_speedups)):
         for bar, s in zip(bars, speedups):
+            label_y = bar.get_height() if s >= 0 else 0
             ax.text(
                 bar.get_x() + bar.get_width() / 2,
-                bar.get_height() + top * 0.01,
+                label_y + top * 0.01,
                 f"{s:.1f}×",
                 ha="center", va="bottom",
                 fontsize=8, fontweight="bold", color="#333333",
@@ -120,9 +152,9 @@ def _speedup_chart(
     ax.set_xticklabels(labels)
     ax.set_xlabel("Number of paragraphs")
     ax.set_ylabel("Speedup (× faster than python-docx)")
-    ax.set_title("NavyFox speedup over python-docx")
+    ax.set_title("NavyFox speedup over python-docx — write vs read")
     ax.axhline(1, color="black", linewidth=0.8, linestyle="--")
-    ax.set_ylim(0, top)
+    ax.set_ylim(bottom=min(0, min(read_speedups) * 1.1), top=top)
     ax.legend(framealpha=0)
     ax.grid(axis="y", **GRID_STYLE)
     ax.spines["top"].set_visible(False)
@@ -196,15 +228,19 @@ def _size_chart() -> None:
 
 def main() -> None:
     os.makedirs(OUT_DIR, exist_ok=True)
-    sizes, write_docx, write_navy, read_docx, read_navy = _load_results()
+    (
+        sizes,
+        write_docx, write_navy, read_docx, read_navy,
+        write_docx_e, write_navy_e, read_docx_e, read_navy_e,
+    ) = _load_results()
 
     _time_chart(
-        sizes, write_navy, write_docx,
+        sizes, write_navy, write_docx, write_navy_e, write_docx_e,
         title="Write benchmark: build + save — NavyFox vs python-docx",
         out_name="perf_write_time.png",
     )
     _time_chart(
-        sizes, read_navy, read_docx,
+        sizes, read_navy, read_docx, read_navy_e, read_docx_e,
         title="Read benchmark: open + iterate — NavyFox vs python-docx",
         out_name="perf_read_time.png",
     )

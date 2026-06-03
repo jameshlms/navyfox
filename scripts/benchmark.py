@@ -41,7 +41,7 @@ def _temp_path(suffix: str) -> str:
 # Write benchmarks — build + save
 # ---------------------------------------------------------------------------
 
-def bench_write_python_docx(n: int) -> float:
+def bench_write_python_docx(n: int) -> tuple[float, float]:
     import docx
 
     times = []
@@ -62,10 +62,11 @@ def bench_write_python_docx(n: int) -> float:
             times.append(time.perf_counter() - t0)
         finally:
             os.unlink(path)
-    return statistics.mean(times)
+    stdev = statistics.stdev(times) if len(times) > 1 else 0.0
+    return statistics.mean(times), stdev
 
 
-def bench_write_navyfox(n: int) -> float:
+def bench_write_navyfox(n: int) -> tuple[float, float]:
     from navyfox import Document
 
     times = []
@@ -88,7 +89,8 @@ def bench_write_navyfox(n: int) -> float:
             times.append(time.perf_counter() - t0)
         finally:
             os.unlink(path)
-    return statistics.mean(times)
+    stdev = statistics.stdev(times) if len(times) > 1 else 0.0
+    return statistics.mean(times), stdev
 
 
 # ---------------------------------------------------------------------------
@@ -113,7 +115,7 @@ def _create_reference_file(n: int) -> str:
     return path
 
 
-def bench_read_python_docx(path: str, n: int) -> float:
+def bench_read_python_docx(path: str, n: int) -> tuple[float, float]:
     import docx
 
     times = []
@@ -127,10 +129,11 @@ def bench_read_python_docx(path: str, n: int) -> float:
                 for cell in row.cells:
                     _ = cell.text
         times.append(time.perf_counter() - t0)
-    return statistics.mean(times)
+    stdev = statistics.stdev(times) if len(times) > 1 else 0.0
+    return statistics.mean(times), stdev
 
 
-def bench_read_navyfox(path: str, n: int) -> float:
+def bench_read_navyfox(path: str, n: int) -> tuple[float, float]:
     from navyfox import Document
 
     times = []
@@ -144,7 +147,8 @@ def bench_read_navyfox(path: str, n: int) -> float:
                     for cell in row.cells:
                         _ = cell.text
         times.append(time.perf_counter() - t0)
-    return statistics.mean(times)
+    stdev = statistics.stdev(times) if len(times) > 1 else 0.0
+    return statistics.mean(times), stdev
 
 
 # ---------------------------------------------------------------------------
@@ -152,7 +156,7 @@ def bench_read_navyfox(path: str, n: int) -> float:
 # ---------------------------------------------------------------------------
 
 def main() -> None:
-    results: dict[str, dict[str, dict[str, float]]] = {
+    results: dict[str, dict[str, dict[str, dict[str, float]]]] = {
         "write": {"python_docx": {}, "navyfox": {}},
         "read":  {"python_docx": {}, "navyfox": {}},
     }
@@ -160,14 +164,14 @@ def main() -> None:
     print("=== Write benchmark (build + save) ===")
     for n in DOCUMENT_SIZES:
         print(f"  python-docx  n={n:>6} ...", end=" ", flush=True)
-        t = bench_write_python_docx(n)
-        results["write"]["python_docx"][str(n)] = t
-        print(f"{t * 1000:.1f} ms")
+        mean, stdev = bench_write_python_docx(n)
+        results["write"]["python_docx"][str(n)] = {"mean": mean, "stdev": stdev}
+        print(f"{mean * 1000:.1f} ms  ±{stdev * 1000:.1f}")
 
         print(f"  navyfox      n={n:>6} ...", end=" ", flush=True)
-        t = bench_write_navyfox(n)
-        results["write"]["navyfox"][str(n)] = t
-        print(f"{t * 1000:.1f} ms")
+        mean, stdev = bench_write_navyfox(n)
+        results["write"]["navyfox"][str(n)] = {"mean": mean, "stdev": stdev}
+        print(f"{mean * 1000:.1f} ms  ±{stdev * 1000:.1f}")
 
     print()
     print("=== Read benchmark (open + iterate all content) ===")
@@ -177,14 +181,14 @@ def main() -> None:
         print("done")
 
         print(f"  python-docx  n={n:>6} ...", end=" ", flush=True)
-        t = bench_read_python_docx(ref, n)
-        results["read"]["python_docx"][str(n)] = t
-        print(f"{t * 1000:.1f} ms")
+        mean, stdev = bench_read_python_docx(ref, n)
+        results["read"]["python_docx"][str(n)] = {"mean": mean, "stdev": stdev}
+        print(f"{mean * 1000:.1f} ms  ±{stdev * 1000:.1f}")
 
         print(f"  navyfox      n={n:>6} ...", end=" ", flush=True)
-        t = bench_read_navyfox(ref, n)
-        results["read"]["navyfox"][str(n)] = t
-        print(f"{t * 1000:.1f} ms")
+        mean, stdev = bench_read_navyfox(ref, n)
+        results["read"]["navyfox"][str(n)] = {"mean": mean, "stdev": stdev}
+        print(f"{mean * 1000:.1f} ms  ±{stdev * 1000:.1f}")
 
         os.unlink(ref)
 
