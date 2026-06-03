@@ -2,7 +2,7 @@ using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 
-namespace BlueFox.Native;
+namespace NavyFox.Native;
 
 internal static unsafe partial class DocumentBuilder
 {

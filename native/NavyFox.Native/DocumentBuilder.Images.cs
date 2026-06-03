@@ -4,7 +4,7 @@ using A   = DocumentFormat.OpenXml.Drawing;
 using WP  = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
 
-namespace BlueFox.Native;
+namespace NavyFox.Native;
 
 internal static unsafe partial class DocumentBuilder
 {

@@ -1,7 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace BlueFox.Native;
+namespace NavyFox.Native;
 
 public static unsafe class NativeExports
 {

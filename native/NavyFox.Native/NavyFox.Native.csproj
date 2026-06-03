@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
-    <AssemblyName>BlueFox.Native</AssemblyName>
-    <RootNamespace>BlueFox.Native</RootNamespace>
+    <AssemblyName>NavyFox.Native</AssemblyName>
+    <RootNamespace>NavyFox.Native</RootNamespace>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <PublishAot>true</PublishAot>
