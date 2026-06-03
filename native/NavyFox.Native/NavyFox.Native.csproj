@@ -25,7 +25,7 @@
 
   <ItemGroup>
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
-      <_Parameter1>BlueFox.Native.Tests</_Parameter1>
+      <_Parameter1>NavyFox.Native.Tests</_Parameter1>
     </AssemblyAttribute>
   </ItemGroup>
 
