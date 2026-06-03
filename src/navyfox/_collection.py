@@ -234,13 +234,14 @@ class CollectionMixin[T: ProxyBase]:
             index: Intended insertion position (currently ignored).
             element: The element to append.
         """
+        if index != len(self):
+            warnings.warn(
+                f"insert() ignores positional index {index!r} in v1 and always appends. "
+                "Positional insertion will be supported in a future release.",
+                FutureWarning,
+                stacklevel=2,
+            )
         self._append_one(element)
-        warnings.warn(
-            "insert() currently only supports appending to the end of the collection. "
-            f"Got index {index}. This may raise an error in future versions.",
-            FutureWarning,
-            stacklevel=2,
-        )
 
     def remove(self, element: T) -> None:
         """Remove *element* from the collection and mark it stale.
@@ -276,7 +277,7 @@ class CollectionMixin[T: ProxyBase]:
         Returns:
             T: The element at the specified index.
         """
-        index = index or -1
+        index = -1 if index is None else index
         n = self._count()
         if index < 0:
             index = n + index

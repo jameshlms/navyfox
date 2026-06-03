@@ -44,7 +44,15 @@ from navyfox.run import Run
 from navyfox.section import Section
 from navyfox.styles import Style, StyleCollection
 from navyfox.table import Cell, Row, Table
-from navyfox.units import Color
+from navyfox.units import (
+    Centimeters,
+    Color,
+    Inches,
+    Length,
+    Millimeters,
+    Points,
+    Twips,
+)
 
 
 def snapshot[T: _ProxyBase](elem: T) -> T:
@@ -95,6 +103,12 @@ __all__ = [
     # Format types
     "RGBColor",
     "Color",
+    "Inches",
+    "Centimeters",
+    "Millimeters",
+    "Twips",
+    "Points",
+    "Length",
     "Border",
     "ParagraphBorders",
     "TableBorders",

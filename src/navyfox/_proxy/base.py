@@ -24,6 +24,7 @@ from collections.abc import Iterator
 from typing import TYPE_CHECKING, Any, ClassVar, Self, cast
 
 from navyfox.errors import DocumentClosedError, StaleProxyError
+from navyfox.units import Color as _Color
 
 
 class ElementState(enum.Enum):
@@ -250,7 +251,10 @@ class ProxyBase:
         return instance
 
     def copy(self) -> Self:
-        """Alias for ``snapshot(self)`` — kept for backward compatibility."""
+        """Return a document-independent snapshot of this element.
+
+        Equivalent to the module-level ``snapshot()`` function.
+        """
         return self.__copydocelem__()
 
     @abstractmethod
@@ -296,6 +300,8 @@ class _EditProxy:
         match value:
             case bool():
                 pending[name] = int(value)
+            case _Color():
+                pending[name] = str(value)   # bare hex, consistent with normalize_color_input
             case str() | float() | int():
                 pending[name] = value
             case _:

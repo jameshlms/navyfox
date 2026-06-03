@@ -63,7 +63,13 @@ from navyfox.styles import StyleCollection as StyleCollection
 from navyfox.table import Cell as Cell
 from navyfox.table import Row as Row
 from navyfox.table import Table as Table
+from navyfox.units import Centimeters as Centimeters
 from navyfox.units import Color as Color
+from navyfox.units import Inches as Inches
+from navyfox.units import Length as Length
+from navyfox.units import Millimeters as Millimeters
+from navyfox.units import Points as Points
+from navyfox.units import Twips as Twips
 
 __version__: str
 

@@ -9,7 +9,7 @@ from navyfox._block import BlockContainerMixin
 from navyfox._block import BlockCtx as _BlockCtx
 from navyfox._collection import DocumentView
 from navyfox._proxy.base import ElementState, ProxyBase
-from navyfox._proxy.descriptors import ChoiceProperty, FloatProperty, StringProperty
+from navyfox._proxy.descriptors import BoolProperty, ChoiceProperty, FloatProperty, StringProperty
 from navyfox.paragraph import Paragraph
 
 
@@ -128,8 +128,8 @@ class Row(ProxyBase):
     height_rule: ChoiceProperty[Literal["auto", "exact", "atLeast"]] = ChoiceProperty(
         "height_rule", ("auto", "exact", "atLeast"), default="auto"
     )
-    is_header = StringProperty("is_header", default="")
-    cant_split = StringProperty("cant_split", default="")
+    is_header = BoolProperty("is_header")
+    cant_split = BoolProperty("cant_split")
 
     def __init__(self) -> None:
         super().__init__()
@@ -244,6 +244,7 @@ class Table(ProxyBase):
         """Plain text grid — plug directly into a DataFrame constructor."""
         if not self._is_live:
             yield []
+            return
 
         for row in self.rows:
             yield [cell.text for cell in row.cells]

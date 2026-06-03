@@ -12,10 +12,7 @@ from navyfox._proxy.descriptors import (
     FloatProperty,
     StringProperty,
 )
-from navyfox.formats import RGBColor
-from navyfox.units import Color
-
-__all__ = ["Run", "Color", "RGBColor"]
+from navyfox.units import Color, normalize_color_input
 
 
 class _RunFormat(TypedDict, total=False):
@@ -230,18 +227,7 @@ class Run(ProxyBase):
         if shadow:
             data["shadow"] = True
         if color is not None:
-            if isinstance(color, Color):
-                data["color"] = color.to_hex()
-            elif color == "auto":
-                data["color"] = "auto"
-            else:
-                try:
-                    data["color"] = Color.from_hex(color).to_hex()
-                except ValueError:
-                    raise ValueError(
-                        f"Invalid color {color!r}. "
-                        "Use '#RRGGBB', 'RRGGBB', Color(r, g, b), or 'auto'."
-                    ) from None
+            data["color"] = normalize_color_input(color)
         if highlight:
             data["highlight"] = highlight
         if font_name:
@@ -386,12 +372,14 @@ class Run(ProxyBase):
 
                 run.format(bold=True, italic=True, color="#CC0000", font_size=14)
         """
-        if kwargs.get("all_caps") and kwargs.get("small_caps"):
-            raise ValueError("'all_caps' and 'small_caps' are mutually exclusive.")
-        if kwargs.get("superscript") and kwargs.get("subscript"):
-            raise ValueError("'superscript' and 'subscript' are mutually exclusive.")
-        if kwargs.get("emboss") and kwargs.get("imprint"):
-            raise ValueError("'emboss' and 'imprint' are mutually exclusive.")
+        _check_mutex(
+            all_caps=bool(kwargs.get("all_caps")),
+            small_caps=bool(kwargs.get("small_caps")),
+            superscript=bool(kwargs.get("superscript")),
+            subscript=bool(kwargs.get("subscript")),
+            emboss=bool(kwargs.get("emboss")),
+            imprint=bool(kwargs.get("imprint")),
+        )
 
         changes: dict[str, Any] = dict(kwargs)
 
@@ -405,25 +393,7 @@ class Run(ProxyBase):
                 changes["underline"] = underline
 
         if "color" in changes:
-            color = changes.pop("color")
-            if color is not None:
-                if isinstance(color, Color):
-                    changes["color"] = color.to_hex()
-                elif color == "auto":
-                    changes["color"] = "auto"
-                else:
-                    try:
-                        changes["color"] = Color.from_hex(color).to_hex()
-                    except ValueError:
-                        raise ValueError(
-                            f"Invalid color {color!r}. "
-                            "Use '#RRGGBB', 'RRGGBB', Color(r, g, b), or 'auto'."
-                        ) from None
-
-        if "highlight" in changes:
-            highlight = changes.pop("highlight")
-            if highlight is not None:
-                changes["highlight"] = highlight
+            changes["color"] = normalize_color_input(changes.pop("color"))
 
         self._apply_changes(changes)
         return self

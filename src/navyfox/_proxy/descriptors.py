@@ -289,7 +289,10 @@ class ColorProperty:
             if not val:
                 return None
             return f"#{val}" if val != "auto" else "auto"
-        return cast("str | None", object.__getattribute__(obj, "_data").get(self._name, None))
+        raw: str | None = object.__getattribute__(obj, "_data").get(self._name, None)
+        if raw and raw != "auto":
+            return f"#{raw}"
+        return raw
 
     def __set__(self, obj: ProxyBase, value: Any) -> None:
 

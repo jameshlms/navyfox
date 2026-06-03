@@ -67,12 +67,12 @@ class _DocMetaProperty:
     def __get__(self, obj: Document | None, objtype: type | None = None) -> str | _DocMetaProperty:
         if obj is None:
             return self
-        return obj._get_lib().get_str(obj._require_open(), self._key) or ""
+        return obj._lib.get_str(obj._require_open(), self._key) or ""
 
     def __set__(self, obj: Document, value: str) -> None:
         if self._readonly:
             raise AttributeError(f"{self._key!r} is read-only")
-        obj._get_lib().set_str(obj._require_open(), self._key, value)
+        obj._lib.set_str(obj._require_open(), self._key, value)
 
 
 def _section_type() -> type[Section]:
@@ -143,65 +143,33 @@ class Document(BlockContainerMixin, CollectionMixin[ProxyBase]):
             with contextlib.suppress(OSError):
                 os.unlink(tmp_path)
 
-    def _get_lib(self) -> Handle:
-        return object.__getattribute__(self, "_lib")
-
-    def _get_handle(self) -> int:
-        return object.__getattribute__(self, "_handle")
-
-    def _get_path(self) -> str | None:
-        return object.__getattribute__(self, "_path")
-
-    def _get_edit_path(self) -> str | None:
-        return object.__getattribute__(self, "_edit_path")
-
-    def _get_tmp_path(self) -> str | None:
-        return object.__getattribute__(self, "_tmp_path")
-
-    def _get_io_edit(self) -> IO[bytes] | None:
-        return object.__getattribute__(self, "_io_edit")
-
-    def _get_open(self) -> bool:
-        return object.__getattribute__(self, "_open")
-
-    def _get_finalizer(self) -> weakref.finalize[[Handle, int, str | None], Any]:
-        return object.__getattribute__(self, "_finalizer")
-
-    def _set_lib(self, lib: Handle) -> None:
-        object.__setattr__(self, "_lib", lib)
-
-    def _set_handle(self, handle: int) -> None:
-        object.__setattr__(self, "_handle", handle)
-
-    def _set_path(self, path: str | None) -> None:
-        object.__setattr__(self, "_path", path)
-
-    def _set_edit_path(self, edit_path: str | None) -> None:
-        object.__setattr__(self, "_edit_path", edit_path)
-
-    def _set_tmp_path(self, tmp_path: str | None) -> None:
-        object.__setattr__(self, "_tmp_path", tmp_path)
-
-    def _set_io_edit(self, io_edit: IO[bytes] | None) -> None:
-        object.__setattr__(self, "_io_edit", io_edit)
-
-    def _set_open(self, open: bool) -> None:
-        object.__setattr__(self, "_open", open)
-
-    def _set_finalizer(self, finalizer: weakref.finalize[[Handle, int, str | None], Any]) -> None:
-        object.__setattr__(self, "_finalizer", finalizer)
-
     def __init__(self) -> None:
         lib = _handle_mod.get_handle()
         handle = lib.create_document()
-        self._set_path(None)
-        self._set_tmp_path(None)
-        self._set_lib(lib)
-        self._set_handle(handle)
-        self._set_edit_path(None)
-        self._set_io_edit(None)
-        self._set_open(True)
-        self._set_finalizer(weakref.finalize(self, Document._dispose, lib, handle, None))
+        self._lib = lib
+        self._handle = handle
+        self._path = None
+        self._edit_path = None
+        self._tmp_path = None
+        self._io_edit = None
+        self._open = True
+        self._finalizer = weakref.finalize(self, Document._dispose, lib, handle, None)
+
+    @classmethod
+    def _from_path(cls, path: _PathArg, *, edit: bool) -> Document:
+        str_path, tmp_path = _resolve_open_path(path)
+        lib = _handle_mod.get_handle()
+        handle = lib.open_document(str_path)
+        doc = cls.__new__(cls)
+        doc._lib = lib
+        doc._handle = handle
+        doc._path = None if tmp_path else str_path
+        doc._edit_path = str_path if edit else None
+        doc._tmp_path = tmp_path
+        doc._io_edit = path if (edit and not isinstance(path, (str, os.PathLike))) else None
+        doc._open = True
+        doc._finalizer = weakref.finalize(doc, Document._dispose, lib, handle, tmp_path)
+        return doc
 
     @classmethod
     def open(cls, path: _PathArg) -> Document:
@@ -228,19 +196,7 @@ class Document(BlockContainerMixin, CollectionMixin[ProxyBase]):
                     with Document.open(f) as doc:
                         print(doc.paragraphs[0].text)
         """
-        str_path, tmp_path = _resolve_open_path(path)
-        lib = _handle_mod.get_handle()
-        handle = lib.open_document(str_path)
-        doc = cls.__new__(cls)
-        doc._set_lib(lib)
-        doc._set_handle(handle)
-        doc._set_path(None if tmp_path else str_path)
-        doc._set_edit_path(None)
-        doc._set_tmp_path(tmp_path)
-        doc._set_io_edit(None)
-        doc._set_open(True)
-        doc._set_finalizer(weakref.finalize(doc, Document._dispose, lib, handle, tmp_path))
-        return doc
+        return cls._from_path(path, edit=False)
 
     @classmethod
     def edit(cls, path: _PathArg) -> Document:
@@ -268,20 +224,7 @@ class Document(BlockContainerMixin, CollectionMixin[ProxyBase]):
                 buf.seek(0)
                 pathlib.Path("report.docx").write_bytes(buf.read())
         """
-        str_path, tmp_path = _resolve_open_path(path)
-        io_edit = path if not isinstance(path, (str, os.PathLike)) else None
-        lib = _handle_mod.get_handle()
-        handle = lib.open_document(str_path)
-        doc = cls.__new__(cls)
-        doc._set_lib(lib)
-        doc._set_handle(handle)
-        doc._set_path(None if tmp_path else str_path)
-        doc._set_edit_path(str_path)
-        doc._set_tmp_path(tmp_path)
-        doc._set_io_edit(io_edit)
-        doc._set_open(True)
-        doc._set_finalizer(weakref.finalize(doc, Document._dispose, lib, handle, tmp_path))
-        return doc
+        return cls._from_path(path, edit=True)
 
     # ------------------------------------------------------------------
     # CollectionMixin interface
@@ -307,7 +250,7 @@ class Document(BlockContainerMixin, CollectionMixin[ProxyBase]):
     # ------------------------------------------------------------------
 
     def _block_context(self) -> tuple[int, Any, Any]:
-        return (self._require_open(), self._get_lib(), self)
+        return (self._require_open(), self._lib, self)
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -320,7 +263,7 @@ class Document(BlockContainerMixin, CollectionMixin[ProxyBase]):
         Returns:
             bool: The indicator of whether the document is open or not.
         """
-        return bool(self._get_open())
+        return self._open
 
     @property
     def path(self) -> str | None:
@@ -328,13 +271,13 @@ class Document(BlockContainerMixin, CollectionMixin[ProxyBase]):
 
         Updated after every successful ``save()`` call.
         """
-        return self._get_path()
+        return self._path
 
     def close(self) -> None:
         """Release the native document handle. Idempotent."""
-        if self._get_open():
-            self._set_open(False)
-            self._get_finalizer()()
+        if self._open:
+            self._open = False
+            self._finalizer()
 
     def __enter__(self) -> Self:
         global _active_count
@@ -344,24 +287,22 @@ class Document(BlockContainerMixin, CollectionMixin[ProxyBase]):
 
     def __exit__(self, *_: object) -> None:
         global _active_count
-        if self._get_open():
-            io_edit: IO[bytes] | None = self._get_io_edit()
-            edit_path: str | None = self._get_edit_path()
-            if io_edit is not None:
-                self.save(io_edit)
-            elif edit_path:
-                self.save(edit_path)
+        if self._open:
+            if self._io_edit is not None:
+                self.save(self._io_edit)
+            elif self._edit_path:
+                self.save(self._edit_path)
         self.close()
         with _active_count_lock:
             _active_count -= 1
 
     def _require_open(self) -> int:
-        if not self._get_open():
+        if not self._open:
             raise DocumentClosedError(
                 "Document is closed. "
                 "Call .copy() inside the context manager to use data outside it."
             )
-        return self._get_handle()
+        return self._handle
 
     # ------------------------------------------------------------------
     # Save
@@ -379,16 +320,16 @@ class Document(BlockContainerMixin, CollectionMixin[ProxyBase]):
         Raises:
             ValueError: If *path* is ``None`` and no associated path exists.
         """
-        target: _PathArg | None = path if path is not None else self._get_path()
+        target: _PathArg | None = path if path is not None else self._path
         if target is None:
             raise ValueError(
                 "No path provided and document has no associated path. Pass a path to save()."
             )
-        lib: Handle = self._get_lib()
+        lib: Handle = self._lib
         if isinstance(target, (str, os.PathLike)):
             str_target = os.fspath(target)
             lib.save_document(self._require_open(), str_target)
-            self._set_path(str_target)
+            self._path = str_target
         else:
             fd, tmp = tempfile.mkstemp(suffix=".docx")
             os.close(fd)
@@ -553,11 +494,10 @@ class Document(BlockContainerMixin, CollectionMixin[ProxyBase]):
         """
         from navyfox._collection import DocumentView
 
-        lib: Handle = self._get_lib()
         return DocumentView(
             self._require_open(),
             self,  # type: ignore[arg-type]  # Self@Document IS Document; Pyright can't resolve the circular stub
-            lib,
+            self._lib,
             tuple(types),
             "body",
         )
@@ -567,7 +507,7 @@ class Document(BlockContainerMixin, CollectionMixin[ProxyBase]):
     # ------------------------------------------------------------------
 
     def __bool__(self) -> bool:
-        return bool(self._get_open())
+        return self._open
 
     def __contains__(self, element: object) -> bool:
         from navyfox._proxy.base import ProxyBase
@@ -599,16 +539,14 @@ class Document(BlockContainerMixin, CollectionMixin[ProxyBase]):
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Document):
             return NotImplemented
-        return self._get_handle() == other._get_handle()
+        return self._handle == other._handle
 
     def __hash__(self) -> int:
-        return hash(self._get_handle())
+        return hash(self._handle)
 
     def __repr__(self) -> str:
-        path = self._get_path()
-        open_ = self._get_open()
         try:
-            n = len(self) if open_ else "?"
+            n = len(self) if self._open else "?"
         except Exception:
             n = "?"
-        return f"<Document path={path!r} elements={n} open={open_}>"
+        return f"<Document path={self._path!r} elements={n} open={self._open}>"

@@ -5,7 +5,6 @@ from typing import Any, ClassVar, Literal, Self
 
 from navyfox._collection import DocumentView as DocumentView
 from navyfox._proxy.base import ProxyBase as _ProxyBase
-from navyfox._proxy.descriptors import ChoiceProperty as _ChoiceProperty
 from navyfox.hyperlink import Hyperlink as Hyperlink
 from navyfox.image import Image as Image
 from navyfox.run import Run as Run
@@ -17,7 +16,10 @@ class Paragraph(_ProxyBase):
     @text.setter
     def text(self, value: str) -> None: ...
     style: str
-    alignment: _ChoiceProperty[Literal["left", "right", "center", "justify"]]
+    @property
+    def alignment(self) -> Literal["left", "right", "center", "justify"] | None: ...
+    @alignment.setter
+    def alignment(self, value: Literal["left", "right", "center", "justify"] | None) -> None: ...
     keep_together: bool
     keep_with_next: bool
     page_break_before: bool
@@ -27,7 +29,10 @@ class Paragraph(_ProxyBase):
     indent_left: float
     indent_right: float
     indent_hanging: float
-    list_style: _ChoiceProperty[Literal["bullet", "number"]]
+    @property
+    def list_style(self) -> Literal["bullet", "number"] | None: ...
+    @list_style.setter
+    def list_style(self, value: Literal["bullet", "number"] | None) -> None: ...
     list_level: int
     def __init__(
         self,
@@ -95,7 +100,10 @@ class Paragraph(_ProxyBase):
     def __contains__(self, run: object) -> bool: ...
 
 class HorizontalRule(Paragraph):
-    line_style: _ChoiceProperty[Literal["single", "double", "dotted", "dashed", "wave"]]
+    @property
+    def line_style(self) -> Literal["single", "double", "dotted", "dashed", "wave"] | None: ...
+    @line_style.setter
+    def line_style(self, value: Literal["single", "double", "dotted", "dashed", "wave"] | None) -> None: ...
     line_width: float
     line_color: str | None
     def __init__(

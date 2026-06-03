@@ -143,6 +143,7 @@ class PageMargins:
     A single positional argument sets all four page margins uniformly::
 
         PageMargins(0.5)          # 0.5 in on all sides
+        PageMargins.uniform(0.5)  # equivalent classmethod form
         PageMargins(top=1.0, left=0.75, right=0.75)  # explicit per-side
     """
 
@@ -170,6 +171,11 @@ class PageMargins:
         self.header = float(header)
         self.footer = float(footer)
 
+    @classmethod
+    def uniform(cls, value: float, *, header: float = 0.5, footer: float = 0.5) -> PageMargins:
+        """Return a :class:`PageMargins` with *value* on all four sides."""
+        return cls(float(value), header=header, footer=footer)
+
     def __repr__(self) -> str:
         return (
             f"PageMargins(top={self.top}, bottom={self.bottom}, "
@@ -188,6 +194,9 @@ class PageMargins:
             and self.header == other.header
             and self.footer == other.footer
         )
+
+    def __hash__(self) -> int:
+        return hash((self.top, self.bottom, self.left, self.right, self.header, self.footer))
 
 
 @dataclass

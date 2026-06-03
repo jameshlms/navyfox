@@ -142,6 +142,17 @@ class StyleCollection:
     def __init__(self, handle: int, doc: Document) -> None:
         self._handle = handle
         self._doc = doc
+        self._name_to_id: dict[str, str] | None = None
+
+    def _invalidate_cache(self) -> None:
+        self._name_to_id = None
+
+    def _get_name_to_id(self) -> dict[str, str]:
+        if self._name_to_id is None:
+            self._name_to_id = {
+                s.name: s.style_id for s in self if s.name and s.style_id
+            }
+        return self._name_to_id
 
     def _get_lib(self) -> Handle:
         return cast("Handle", object.__getattribute__(self._doc, "_lib"))
@@ -157,7 +168,11 @@ class StyleCollection:
     def __getitem__(self, name: str) -> Style:
         try:
             h = self._get_lib().get_child_handle(self._handle, f"style:{name}", 0)
+            if not h:
+                raise KeyError(name)
             return Style._from_native(h, self._doc)
+        except KeyError:
+            raise
         except Exception:
             raise KeyError(name) from None
 
@@ -191,16 +206,9 @@ class StyleCollection:
 
         Returns ``None`` if no matching style is found.
         """
-        try:
-            self[name_or_id]
+        if name_or_id in self:
             return name_or_id
-        except KeyError:
-            pass
-        for style in self:
-            if style.name == name_or_id:
-                sid = style.style_id
-                return sid if sid else None
-        return None
+        return self._get_name_to_id().get(name_or_id)
 
     def register(
         self,
@@ -269,40 +277,43 @@ class StyleCollection:
             lib.set_str(h, "style_name", name)
             lib.set_str(h, "style_type", type)
 
-        if based_on is not None:
-            lib.set_str(h, "based_on", based_on)
-        if next_style is not None:
-            lib.set_str(h, "next_style", next_style)
-
         style = Style._from_native(h, self._doc)
 
+        changes: dict[str, Any] = {}
+        if based_on is not None:
+            changes["based_on"] = based_on
+        if next_style is not None:
+            changes["next_style"] = next_style
         if bold:
-            style.bold = True
+            changes["bold"] = True
         if italic:
-            style.italic = True
+            changes["italic"] = True
         if underline is not None and underline is not False:
-            style.underline = underline
+            changes["underline"] = "single" if underline is True else underline
         if color is not None:
-            style.color = color
+            changes["color"] = color
         if font_name:
-            style.font_name = font_name
+            changes["font_name"] = font_name
         if font_size:
-            style.font_size = font_size
+            changes["font_size"] = font_size
         if alignment is not None:
-            style.alignment = alignment
+            changes["alignment"] = alignment
         if space_before:
-            style.space_before = space_before
+            changes["space_before"] = space_before
         if space_after:
-            style.space_after = space_after
+            changes["space_after"] = space_after
         if line_spacing:
-            style.line_spacing = line_spacing
+            changes["line_spacing"] = line_spacing
         if indent_left:
-            style.indent_left = indent_left
+            changes["indent_left"] = indent_left
         if indent_right:
-            style.indent_right = indent_right
+            changes["indent_right"] = indent_right
         if indent_hanging:
-            style.indent_hanging = indent_hanging
+            changes["indent_hanging"] = indent_hanging
+        if changes:
+            style._apply_changes(changes)
 
+        self._invalidate_cache()
         return style
 
     def __repr__(self) -> str:

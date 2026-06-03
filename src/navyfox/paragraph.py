@@ -445,6 +445,21 @@ class _ConstructionRunsView:
     def __bool__(self) -> bool:
         return bool(self._runs)
 
+    def pop(self, index: int | None = None) -> Any:
+        i = -1 if index is None else index
+        run = self._runs[i]
+        del self._runs[i]
+        return run
+
+    def clear(self) -> None:
+        self._runs.clear()
+
+    def index(self, element: Any) -> int:
+        try:
+            return self._runs.index(element)
+        except ValueError:
+            raise ValueError("Run is not in this paragraph.") from None
+
     def __iadd__(self, elements: Iterable[Any]) -> _ConstructionRunsView:
         self.extend(elements)
         return self
