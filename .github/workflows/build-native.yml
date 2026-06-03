@@ -19,21 +19,27 @@ jobs:
           - rid: linux-x64
             os: ubuntu-24.04
             lib_name: NavyFox.Native.so
+            publish_props: ""
           - rid: linux-arm64
             os: ubuntu-24.04-arm
             lib_name: NavyFox.Native.so
+            publish_props: ""
           - rid: win-x64
             os: windows-2022
             lib_name: NavyFox.Native.dll
+            publish_props: ""
           - rid: win-arm64
             os: windows-11-arm
             lib_name: NavyFox.Native.dll
+            publish_props: ""
           - rid: osx-arm64
             os: macos-15
             lib_name: NavyFox.Native.dylib
+            publish_props: "-p:MacOSXDeploymentTarget=12.0"
           - rid: osx-x64
             os: macos-15
             lib_name: NavyFox.Native.dylib
+            publish_props: "-p:MacOSXDeploymentTarget=12.0"
 
     steps:
       - uses: actions/checkout@v4
@@ -60,6 +66,7 @@ jobs:
           -p:PublishAot=true
           -p:NativeLib=Shared
           -p:StripSymbols=true
+          ${{ matrix.publish_props }}
           -o publish/${{ matrix.rid }}
 
       - name: Upload artifact
