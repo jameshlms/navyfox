@@ -301,7 +301,7 @@ class _EditProxy:
             case bool():
                 pending[name] = int(value)
             case _Color():
-                pending[name] = str(value)   # bare hex, consistent with normalize_color_input
+                pending[name] = str(value)   # bare hex, consistent with Color.normalize()
             case str() | float() | int():
                 pending[name] = value
             case _:

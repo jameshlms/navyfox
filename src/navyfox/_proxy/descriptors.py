@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, cast, overload
 
-from navyfox.units import normalize_color_input
+from navyfox.units import Color as _Color
 
 if TYPE_CHECKING:
     from navyfox._proxy.base import ProxyBase
@@ -296,7 +296,7 @@ class ColorProperty:
 
     def __set__(self, obj: ProxyBase, value: Any) -> None:
 
-        normalized = normalize_color_input(value)
+        normalized = _Color.normalize(value)
         native = object.__getattribute__(obj, "_native")
         if native is not None:
             obj._check_valid()

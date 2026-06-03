@@ -12,7 +12,7 @@ from navyfox._proxy.descriptors import (
     FloatProperty,
     StringProperty,
 )
-from navyfox.units import Color, normalize_color_input
+from navyfox.units import Color
 
 
 class _RunFormat(TypedDict, total=False):
@@ -227,7 +227,7 @@ class Run(ProxyBase):
         if shadow:
             data["shadow"] = True
         if color is not None:
-            data["color"] = normalize_color_input(color)
+            data["color"] = Color.normalize(color)
         if highlight:
             data["highlight"] = highlight
         if font_name:
@@ -393,7 +393,7 @@ class Run(ProxyBase):
                 changes["underline"] = underline
 
         if "color" in changes:
-            changes["color"] = normalize_color_input(changes.pop("color"))
+            changes["color"] = Color.normalize(changes.pop("color"))
 
         self._apply_changes(changes)
         return self

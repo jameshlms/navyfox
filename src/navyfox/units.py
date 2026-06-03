@@ -101,30 +101,44 @@ class Color:
         """Return a darker version by blending toward black."""
         return self.blend(Color(0, 0, 0), amount)
 
+    @classmethod
+    def normalize(cls, value: Color | str | None) -> str | None:
+        """Normalize a color value to the bare ``RRGGBB`` string used by the native layer.
 
-def normalize_color_input(value: Color | str | None) -> str | None:
-    """Normalize a color input to bare ``RRGGBB`` for the native layer.
+        Accepts any of the formats accepted throughout the navyfox API and
+        converts them to the canonical internal representation:
 
-    Accepts ``None``, ``'auto'``, a ``Color`` instance, ``'#RRGGBB'``,
-    or ``'RRGGBB'``. Raises ``ValueError`` for anything else.
-    """
-    if value is None:
-        return None
-    if value == AUTO:
-        return AUTO
-    if isinstance(value, Color):
-        return str(value)
-    if isinstance(value, str):
-        s = value.lstrip("#")
-        if len(s) == 6:
-            try:
-                int(s, 16)
-                return s.upper()
-            except ValueError:
-                pass
-    raise ValueError(
-        f"Invalid color {value!r}. Use '#RRGGBB', 'RRGGBB', Color(r, g, b), or 'auto'."
-    )
+        - ``None`` — returned as-is; clears the color when passed to a setter.
+        - ``'auto'`` — returned as-is; tells Word to pick the theme color.
+        - :class:`Color` instance — converted via ``str(color)`` (bare ``RRGGBB``).
+        - ``'#RRGGBB'`` or ``'RRGGBB'`` — ``#`` stripped, validated, uppercased.
+
+        Raises :exc:`ValueError` for any other input.
+
+        Example::
+
+            Color.normalize(Color(255, 0, 0))   # → 'FF0000'
+            Color.normalize('#cc0000')           # → 'CC0000'
+            Color.normalize('auto')             # → 'auto'
+            Color.normalize(None)               # → None
+        """
+        if value is None:
+            return None
+        if value == AUTO:
+            return AUTO
+        if isinstance(value, cls):
+            return str(value)
+        if isinstance(value, str):
+            s = value.lstrip("#")
+            if len(s) == 6:
+                try:
+                    int(s, 16)
+                    return s.upper()
+                except ValueError:
+                    pass
+        raise ValueError(
+            f"Invalid color {value!r}. Use '#RRGGBB', 'RRGGBB', Color(r, g, b), or 'auto'."
+        )
 
 
 Color.BLACK = Color(0, 0, 0)
