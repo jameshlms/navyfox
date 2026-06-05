@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from typing import TYPE_CHECKING, Any, Literal, cast, override
 
-from navyfox._proxy.base import ElementState, Element
+from navyfox._proxy.base import Element, ElementState
 from navyfox._proxy.descriptors import (
     BoolProperty,
     ChoiceProperty,

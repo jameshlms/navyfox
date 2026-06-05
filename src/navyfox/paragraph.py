@@ -7,7 +7,7 @@ from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Literal, Self, TypedDict, Unpack, override
 
 from navyfox._collection import DocumentView
-from navyfox._proxy.base import ElementState, Element
+from navyfox._proxy.base import Element, ElementState
 from navyfox._proxy.descriptors import (
     BoolProperty,
     ChoiceProperty,

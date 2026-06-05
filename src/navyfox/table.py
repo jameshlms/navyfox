@@ -8,7 +8,7 @@ from typing import Any, Literal, overload, override
 from navyfox._block import BlockContainerMixin
 from navyfox._block import BlockCtx as _BlockCtx
 from navyfox._collection import DocumentView
-from navyfox._proxy.base import ElementState, Element
+from navyfox._proxy.base import Element, ElementState
 from navyfox._proxy.descriptors import BoolProperty, ChoiceProperty, FloatProperty, StringProperty
 from navyfox.paragraph import Paragraph
 

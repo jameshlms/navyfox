@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Literal, Self, TypedDict, Unpack, override
 
-from navyfox._proxy.base import ElementState, Element
+from navyfox._proxy.base import Element, ElementState
 from navyfox._proxy.descriptors import (
     BoolProperty,
     ChoiceProperty,

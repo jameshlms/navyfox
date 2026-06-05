@@ -11,7 +11,7 @@ import mimetypes
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, override
 
-from navyfox._proxy.base import ElementState, Element
+from navyfox._proxy.base import Element, ElementState
 from navyfox._proxy.descriptors import FloatProperty, StringProperty
 
 if TYPE_CHECKING:
