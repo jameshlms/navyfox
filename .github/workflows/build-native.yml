@@ -37,6 +37,7 @@ jobs:
           curl -sSL https://dot.net/v1/dotnet-install.sh | bash -s -- --channel 9.0 --install-dir /usr/local/dotnet
           echo "/usr/local/dotnet" >> $GITHUB_PATH
           echo "DOTNET_ROOT=/usr/local/dotnet" >> $GITHUB_ENV
+          echo "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1" >> $GITHUB_ENV
 
       - name: Publish Native AOT shared library
         run: >
@@ -47,6 +48,7 @@ jobs:
           -p:PublishAot=true
           -p:NativeLib=Shared
           -p:StripSymbols=true
+          -p:InvariantGlobalization=true
           -o publish/${{ matrix.rid }}
 
       - name: Upload artifact
