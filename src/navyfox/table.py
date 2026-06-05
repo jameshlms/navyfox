@@ -90,6 +90,7 @@ class Cell(BlockContainerMixin, ProxyBase):
     def __len__(self) -> int:
         if not self._is_live:
             return 0
+        self._check_valid()
         try:
             return self._get_lib().get_count(self._require_native, "body")
         except Exception:
@@ -165,6 +166,8 @@ class Row(ProxyBase):
             return False
 
     def __len__(self) -> int:
+        if self._is_live:
+            self._check_valid()
         try:
             return len(self.cells)
         except Exception:
@@ -293,6 +296,8 @@ class Table(ProxyBase):
             return False
 
     def __len__(self) -> int:
+        if self._is_live:
+            self._check_valid()
         try:
             return len(self.rows)
         except Exception:

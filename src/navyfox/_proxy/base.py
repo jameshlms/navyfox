@@ -61,15 +61,17 @@ class ProxyBase:
 
     @property
     def _require_native(self) -> int:
-        """The native handle; only valid in LIVE state."""
+        """The native handle; only valid in an open, non-stale LIVE state."""
         if self._native is None:
             raise RuntimeError(f"{type(self).__name__}._require_native accessed outside LIVE state")
+        self._check_valid()
         return self._native
 
     def _require_live(self) -> tuple[int, Document]:
-        """Return ``(native_handle, document)``; raises if either slot is None."""
+        """Return ``(native_handle, document)``; raises if not in a valid LIVE state."""
         if self._native is None or self._document is None:
             raise RuntimeError(f"{type(self).__name__} is not in LIVE state")
+        self._check_valid()
         return self._native, self._document
 
     def __init__(self) -> None:

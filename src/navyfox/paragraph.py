@@ -278,6 +278,7 @@ class Paragraph(ProxyBase):
         """
         if not self._is_live:
             raise ValueError("Cannot add_break to a paragraph that is not yet in a document.")
+        self._check_valid()
         self._get_lib().append_child(self._require_native, "break")
         return self
 

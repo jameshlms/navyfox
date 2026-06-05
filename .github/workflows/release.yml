@@ -20,9 +20,9 @@ jobs:
       matrix:
         include:
           - rid: linux-x64
-            wheel_plat: linux_x86_64
+            auditwheel_plat: manylinux_2_28_x86_64
           - rid: linux-arm64
-            wheel_plat: linux_aarch64
+            auditwheel_plat: manylinux_2_28_aarch64
           - rid: win-x64
             wheel_plat: win_amd64
           - rid: win-arm64
@@ -54,12 +54,24 @@ jobs:
           python-version: "3.12"
 
       - name: Install build tools
-        run: python -m pip install --upgrade pip build wheel twine
+        run: python -m pip install --upgrade pip build wheel twine auditwheel
+
+      - name: Install patchelf (Linux wheels)
+        if: matrix.auditwheel_plat
+        run: sudo apt-get install -y --no-install-recommends patchelf
 
       - name: Build wheel
         run: python -m build --wheel --no-isolation
 
-      - name: Retag wheel for ${{ matrix.wheel_plat }}
+      - name: Repair and retag wheel with auditwheel (Linux)
+        if: matrix.auditwheel_plat
+        run: |
+          auditwheel repair dist/*.whl --plat ${{ matrix.auditwheel_plat }} -w dist/repaired/
+          rm dist/*.whl
+          mv dist/repaired/*.whl dist/
+
+      - name: Retag wheel (non-Linux)
+        if: matrix.wheel_plat
         run: wheel tags --platform-tag ${{ matrix.wheel_plat }} --remove dist/*.whl
 
       - name: Publish to PyPI
