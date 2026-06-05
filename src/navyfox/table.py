@@ -8,12 +8,12 @@ from typing import Any, Literal, overload, override
 from navyfox._block import BlockContainerMixin
 from navyfox._block import BlockCtx as _BlockCtx
 from navyfox._collection import DocumentView
-from navyfox._proxy.base import ElementState, ProxyBase
+from navyfox._proxy.base import ElementState, Element
 from navyfox._proxy.descriptors import BoolProperty, ChoiceProperty, FloatProperty, StringProperty
 from navyfox.paragraph import Paragraph
 
 
-class Cell(BlockContainerMixin, ProxyBase):
+class Cell(BlockContainerMixin, Element):
     """A single table cell.
 
     Cells are live proxies — always accessed through a :class:`Row`:
@@ -104,7 +104,7 @@ class Cell(BlockContainerMixin, ProxyBase):
         return iter(DocumentView(handle, doc, self._get_lib(), (Paragraph, Table), "body"))
 
 
-class Row(ProxyBase):
+class Row(Element):
     """A table row — a live proxy that provides access to its :attr:`cells`.
 
     Rows are accessed through :attr:`Table.rows`:
@@ -180,7 +180,7 @@ class Row(ProxyBase):
         return self.cells[index]
 
 
-class Table(ProxyBase):
+class Table(Element):
     """A table element — either a live proxy or a construction object.
 
     **Construction**::

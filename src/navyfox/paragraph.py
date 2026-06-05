@@ -7,7 +7,7 @@ from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Literal, Self, TypedDict, Unpack, override
 
 from navyfox._collection import DocumentView
-from navyfox._proxy.base import ElementState, ProxyBase
+from navyfox._proxy.base import ElementState, Element
 from navyfox._proxy.descriptors import (
     BoolProperty,
     ChoiceProperty,
@@ -39,10 +39,10 @@ class _ParagraphFormat(TypedDict, total=False):
     list_level: int
 
 
-class Paragraph(ProxyBase):
+class Paragraph(Element):
     """A paragraph element — either a live proxy or a construction object.
 
-    __slots__ = () — all instance state is in ProxyBase slots.
+    __slots__ = () — all instance state is in Element slots.
 
     **Construction object** (before appending to a document)::
 

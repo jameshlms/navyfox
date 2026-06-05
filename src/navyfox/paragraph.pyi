@@ -4,12 +4,12 @@ from pathlib import Path
 from typing import Any, ClassVar, Literal, Self
 
 from navyfox._collection import DocumentView as DocumentView
-from navyfox._proxy.base import ProxyBase as _ProxyBase
+from navyfox._proxy.base import Element as _Element
 from navyfox.hyperlink import Hyperlink as Hyperlink
 from navyfox.image import Image as Image
 from navyfox.run import Run as Run
 
-class Paragraph(_ProxyBase):
+class Paragraph(_Element):
     _child_type_name: ClassVar[str]
     @property
     def text(self) -> str: ...

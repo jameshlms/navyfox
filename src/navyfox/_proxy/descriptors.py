@@ -2,7 +2,7 @@
 
 Adding a new property is one line:
 
-    class Run(ProxyBase):
+    class Run(Element):
         bold = BoolProperty("bold")
 
 Each descriptor handles both live (FFI) and spec (_data) mode transparently.
@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Any, cast, overload
 from navyfox.units import Color as _Color
 
 if TYPE_CHECKING:
-    from navyfox._proxy.base import ProxyBase
+    from navyfox._proxy.base import Element
 
 
 # ---------------------------------------------------------------------------
@@ -32,10 +32,10 @@ class NullableStringProperty:
     @overload
     def __get__(self, obj: None, objtype: type) -> NullableStringProperty: ...
     @overload
-    def __get__(self, obj: ProxyBase, objtype: type) -> str | None: ...
+    def __get__(self, obj: Element, objtype: type) -> str | None: ...
 
     def __get__(
-        self, obj: ProxyBase | None, objtype: type | None = None
+        self, obj: Element | None, objtype: type | None = None
     ) -> str | None | NullableStringProperty:
         if obj is None:
             return self
@@ -46,7 +46,7 @@ class NullableStringProperty:
         data: dict[str, Any] = object.__getattribute__(obj, "_data")
         return data.get(self._name) or None
 
-    def __set__(self, obj: ProxyBase, value: str | None) -> None:
+    def __set__(self, obj: Element, value: str | None) -> None:
         normalized = value or ""
         native = object.__getattribute__(obj, "_native")
         if native is not None:
@@ -71,9 +71,9 @@ class BoolProperty:
     @overload
     def __get__(self, obj: None, objtype: type) -> BoolProperty: ...
     @overload
-    def __get__(self, obj: ProxyBase, objtype: type) -> bool: ...
+    def __get__(self, obj: Element, objtype: type) -> bool: ...
 
-    def __get__(self, obj: ProxyBase | None, objtype: type | None = None) -> bool | BoolProperty:
+    def __get__(self, obj: Element | None, objtype: type | None = None) -> bool | BoolProperty:
         if obj is None:
             return self
         if object.__getattribute__(obj, "_native") is not None:
@@ -83,7 +83,7 @@ class BoolProperty:
         data: dict[str, Any] = object.__getattribute__(obj, "_data")
         return bool(data.get(self._name, self._default))
 
-    def __set__(self, obj: ProxyBase, value: bool) -> None:
+    def __set__(self, obj: Element, value: bool) -> None:
         native = object.__getattribute__(obj, "_native")
         if native is not None:
             obj._check_valid()
@@ -107,9 +107,9 @@ class StringProperty:
     @overload
     def __get__(self, obj: None, objtype: type) -> StringProperty: ...
     @overload
-    def __get__(self, obj: ProxyBase, objtype: type) -> str: ...
+    def __get__(self, obj: Element, objtype: type) -> str: ...
 
-    def __get__(self, obj: ProxyBase | None, objtype: type | None = None) -> str | StringProperty:
+    def __get__(self, obj: Element | None, objtype: type | None = None) -> str | StringProperty:
         if obj is None:
             return self
         if object.__getattribute__(obj, "_native") is not None:
@@ -119,7 +119,7 @@ class StringProperty:
         data: dict[str, Any] = object.__getattribute__(obj, "_data")
         return str(data.get(self._name, self._default))
 
-    def __set__(self, obj: ProxyBase, value: str | None) -> None:
+    def __set__(self, obj: Element, value: str | None) -> None:
         normalized = value if value is not None else self._default
         native = object.__getattribute__(obj, "_native")
         if native is not None:
@@ -144,9 +144,9 @@ class FloatProperty:
     @overload
     def __get__(self, obj: None, objtype: type) -> FloatProperty: ...
     @overload
-    def __get__(self, obj: ProxyBase, objtype: type) -> float: ...
+    def __get__(self, obj: Element, objtype: type) -> float: ...
 
-    def __get__(self, obj: ProxyBase | None, objtype: type | None = None) -> float | FloatProperty:
+    def __get__(self, obj: Element | None, objtype: type | None = None) -> float | FloatProperty:
         if obj is None:
             return self
         if object.__getattribute__(obj, "_native") is not None:
@@ -158,7 +158,7 @@ class FloatProperty:
         data: dict[str, Any] = object.__getattribute__(obj, "_data")
         return float(data.get(self._name, self._default))
 
-    def __set__(self, obj: ProxyBase, value: float) -> None:
+    def __set__(self, obj: Element, value: float) -> None:
         v = float(value)
         native = object.__getattribute__(obj, "_native")
         if native is not None:
@@ -183,9 +183,9 @@ class IntProperty:
     @overload
     def __get__(self, obj: None, objtype: type) -> IntProperty: ...
     @overload
-    def __get__(self, obj: ProxyBase, objtype: type) -> int: ...
+    def __get__(self, obj: Element, objtype: type) -> int: ...
 
-    def __get__(self, obj: ProxyBase | None, objtype: type | None = None) -> int | IntProperty:
+    def __get__(self, obj: Element | None, objtype: type | None = None) -> int | IntProperty:
         if obj is None:
             return self
         if object.__getattribute__(obj, "_native") is not None:
@@ -195,7 +195,7 @@ class IntProperty:
         data: dict[str, Any] = object.__getattribute__(obj, "_data")
         return int(data.get(self._name, self._default))
 
-    def __set__(self, obj: ProxyBase, value: int) -> None:
+    def __set__(self, obj: Element, value: int) -> None:
         v = int(value)
         native = object.__getattribute__(obj, "_native")
         if native is not None:
@@ -232,10 +232,10 @@ class ChoiceProperty[L: str]:
     @overload
     def __get__(self, obj: None, objtype: type) -> ChoiceProperty[L]: ...
     @overload
-    def __get__(self, obj: ProxyBase, objtype: type) -> L | None: ...
+    def __get__(self, obj: Element, objtype: type) -> L | None: ...
 
     def __get__(
-        self, obj: ProxyBase | None, objtype: type | None = None
+        self, obj: Element | None, objtype: type | None = None
     ) -> L | None | ChoiceProperty[L]:
         if obj is None:
             return self
@@ -246,7 +246,7 @@ class ChoiceProperty[L: str]:
         data: dict[str, Any] = object.__getattribute__(obj, "_data")
         return cast(L | None, data.get(self._name, self._default))
 
-    def __set__(self, obj: ProxyBase, value: bool | str | None) -> None:
+    def __set__(self, obj: Element, value: bool | str | None) -> None:
         if self._allow_bool:
             if value is True:
                 value = self._choices[0]
@@ -276,10 +276,10 @@ class ColorProperty:
     @overload
     def __get__(self, obj: None, objtype: type) -> ColorProperty: ...
     @overload
-    def __get__(self, obj: ProxyBase, objtype: type) -> str | None: ...
+    def __get__(self, obj: Element, objtype: type) -> str | None: ...
 
     def __get__(
-        self, obj: ProxyBase | None, objtype: type | None = None
+        self, obj: Element | None, objtype: type | None = None
     ) -> str | None | ColorProperty:
         if obj is None:
             return self
@@ -294,7 +294,7 @@ class ColorProperty:
             return f"#{raw}"
         return raw
 
-    def __set__(self, obj: ProxyBase, value: Any) -> None:
+    def __set__(self, obj: Element, value: Any) -> None:
 
         normalized = _Color.normalize(value)
         native = object.__getattribute__(obj, "_native")
@@ -317,16 +317,16 @@ class ObjectProperty:
     On write: validates type before setting.
     """
 
-    def __init__(self, name: str, proxy_type: type[ProxyBase]) -> None:
+    def __init__(self, name: str, proxy_type: type[Element]) -> None:
         self._name = name
         self._proxy_type = proxy_type
 
     @overload
     def __get__(self, obj: None, objtype: type) -> ObjectProperty: ...
     @overload
-    def __get__(self, obj: ProxyBase, objtype: type) -> Any: ...
+    def __get__(self, obj: Element, objtype: type) -> Any: ...
 
-    def __get__(self, obj: ProxyBase | None, objtype: type | None = None) -> Any:
+    def __get__(self, obj: Element | None, objtype: type | None = None) -> Any:
         if obj is None:
             return self
         if object.__getattribute__(obj, "_native") is not None:
@@ -338,7 +338,7 @@ class ObjectProperty:
             return self._proxy_type._from_native(sub_handle, doc)
         return object.__getattribute__(obj, "_data").get(self._name, None)
 
-    def __set__(self, obj: ProxyBase, value: Any) -> None:
+    def __set__(self, obj: Element, value: Any) -> None:
         if value is not None and not isinstance(value, self._proxy_type):
             raise TypeError(
                 f"{self._name!r} expects {self._proxy_type.__name__}, got {type(value).__name__}"

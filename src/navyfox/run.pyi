@@ -1,9 +1,9 @@
 from typing import Any, Literal, Self
 
-from navyfox._proxy.base import ProxyBase as _ProxyBase
+from navyfox._proxy.base import Element as _Element
 from navyfox.units import Color as Color
 
-class Run(_ProxyBase):
+class Run(_Element):
     text: str
     style: str
     bold: bool

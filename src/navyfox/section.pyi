@@ -2,12 +2,12 @@ from pathlib import Path
 from typing import Any, Literal
 
 from navyfox._collection import DocumentView as DocumentView
-from navyfox._proxy.base import ProxyBase as _ProxyBase
+from navyfox._proxy.base import Element as _Element
 from navyfox.image import Image
 from navyfox.paragraph import HorizontalRule, LineStyleArg, Paragraph
 from navyfox.table import Table
 
-class Section(_ProxyBase):
+class Section(_Element):
     orientation: Literal["portrait", "landscape"]
     page_width: float
     page_height: float

@@ -1,5 +1,5 @@
 from navyfox._collection import DocumentView as DocumentView
-from navyfox._proxy.base import ProxyBase as _ProxyBase
+from navyfox._proxy.base import Element as Element
 from navyfox.document import Document as Document
 from navyfox.errors import (
     DocumentClosedError as DocumentClosedError,
@@ -73,4 +73,4 @@ from navyfox.units import Twips as Twips
 
 __version__: str
 
-def snapshot[T: _ProxyBase](elem: T) -> T: ...
+def snapshot[T: Element](elem: T) -> T: ...

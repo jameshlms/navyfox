@@ -11,7 +11,7 @@ import mimetypes
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, override
 
-from navyfox._proxy.base import ElementState, ProxyBase
+from navyfox._proxy.base import ElementState, Element
 from navyfox._proxy.descriptors import FloatProperty, StringProperty
 
 if TYPE_CHECKING:
@@ -40,7 +40,7 @@ def _guess_content_type(path: Path) -> str:
     return guessed or "image/png"
 
 
-class Image(ProxyBase):
+class Image(Element):
     """A run-level inline image element.
 
     **Construction** (before appending to a paragraph):

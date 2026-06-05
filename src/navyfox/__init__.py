@@ -14,7 +14,7 @@ so it can be used after the document is closed.
 """
 
 from navyfox._collection import DocumentView
-from navyfox._proxy.base import ProxyBase as _ProxyBase
+from navyfox._proxy.base import Element
 from navyfox.document import Document
 from navyfox.errors import (
     DocumentClosedError,
@@ -55,7 +55,7 @@ from navyfox.units import (
 )
 
 
-def snapshot[T: _ProxyBase](elem: T) -> T:
+def snapshot[T: Element](elem: T) -> T:
     """Return a document-independent copy of *elem*.
 
     The returned object is in *construction state* — it has no native handle and
@@ -86,6 +86,7 @@ def snapshot[T: _ProxyBase](elem: T) -> T:
 __all__ = [
     # Core
     "snapshot",
+    "Element",
     "Document",
     "DocumentView",
     "Paragraph",

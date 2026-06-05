@@ -14,7 +14,7 @@ import navyfox._native.handle as _handle_mod
 from navyfox._block import BlockContainerMixin, _BlockViewProperty
 from navyfox._collection import CollectionMixin
 from navyfox._native.handle import Handle
-from navyfox._proxy.base import ProxyBase
+from navyfox._proxy.base import Element
 from navyfox.errors import DocumentClosedError
 from navyfox.paragraph import Paragraph
 from navyfox.table import Table
@@ -95,7 +95,7 @@ def _collection_for_type(t: type) -> str:
     return _type_name_map().get(t, "body")
 
 
-class Document(BlockContainerMixin, CollectionMixin[ProxyBase]):
+class Document(BlockContainerMixin, CollectionMixin[Element]):
     """A DOCX document backed by the NavyFox native library.
 
     The document is the body collection — iterate it, append to it, and access
@@ -475,7 +475,7 @@ class Document(BlockContainerMixin, CollectionMixin[ProxyBase]):
     # group() — typed filtered view builder
     # ------------------------------------------------------------------
 
-    def group[T: ProxyBase](self, types: list[type[T]]) -> DocumentView[T]:
+    def group[T: Element](self, types: list[type[T]]) -> DocumentView[T]:
         """Return a live view over the body containing only the given element types.
 
         Args:
@@ -510,9 +510,9 @@ class Document(BlockContainerMixin, CollectionMixin[ProxyBase]):
         return self._open
 
     def __contains__(self, element: object) -> bool:
-        from navyfox._proxy.base import ProxyBase
+        from navyfox._proxy.base import Element
 
-        if not isinstance(element, ProxyBase):
+        if not isinstance(element, Element):
             return False
         native = element._native  # type: ignore[union-attr]
         if native is None:
@@ -521,18 +521,18 @@ class Document(BlockContainerMixin, CollectionMixin[ProxyBase]):
         return doc is self
 
     @overload
-    def __getitem__(self, key: int) -> ProxyBase: ...
+    def __getitem__(self, key: int) -> Element: ...
     @overload
-    def __getitem__(self, key: slice) -> DocumentView[ProxyBase]: ...
+    def __getitem__(self, key: slice) -> DocumentView[Element]: ...
     @overload
-    def __getitem__[T: ProxyBase](self, key: type[T]) -> DocumentView[T]: ...
+    def __getitem__[T: Element](self, key: type[T]) -> DocumentView[T]: ...
 
-    def __getitem__(self, key: int | slice | type) -> ProxyBase | DocumentView[Any]:
+    def __getitem__(self, key: int | slice | type) -> Element | DocumentView[Any]:
         if isinstance(key, type):
             return self._block_view(key, _collection_for_type(key))
         return super().__getitem__(key)  # type: ignore[return-value]
 
-    def __iadd__(self, elements: Iterable[ProxyBase]) -> Self:  # type: ignore[override]
+    def __iadd__(self, elements: Iterable[Element]) -> Self:  # type: ignore[override]
         self.extend(elements)
         return self
 

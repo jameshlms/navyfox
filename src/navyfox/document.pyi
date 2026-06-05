@@ -6,7 +6,7 @@ from typing import IO, Self
 from navyfox._block import BlockContainerMixin
 from navyfox._collection import CollectionMixin as _CollectionMixin
 from navyfox._collection import DocumentView as DocumentView
-from navyfox._proxy.base import ProxyBase as _ProxyBase
+from navyfox._proxy.base import Element as _Element
 from navyfox.formats import PageMargins
 from navyfox.image import Image
 from navyfox.paragraph import HorizontalRule, LineStyleArg, Paragraph
@@ -16,7 +16,7 @@ from navyfox.table import Table
 
 _PathArg = str | os.PathLike[str] | IO[bytes]
 
-class Document(BlockContainerMixin, _CollectionMixin[_ProxyBase]):
+class Document(BlockContainerMixin, _CollectionMixin[_Element]):
     def __init__(self) -> None: ...
     @classmethod
     def open(cls, path: _PathArg) -> Document: ...
@@ -59,7 +59,7 @@ class Document(BlockContainerMixin, _CollectionMixin[_ProxyBase]):
         self,
         value: PageMargins | float | tuple[float, float] | tuple[float, float, float, float],
     ) -> None: ...
-    def group[T: _ProxyBase](self, types: Sequence[type[T]]) -> DocumentView[T]: ...
+    def group[T: _Element](self, types: Sequence[type[T]]) -> DocumentView[T]: ...
     def add_paragraph(self, text: str = ..., style: str = ...) -> Paragraph: ...
     def add_heading(self, text: str = ..., level: int = ...) -> Paragraph: ...
     def add_table(self, rows: int, cols: int, style: str = ...) -> Table: ...

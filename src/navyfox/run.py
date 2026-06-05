@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Literal, Self, TypedDict, Unpack, override
 
-from navyfox._proxy.base import ElementState, ProxyBase
+from navyfox._proxy.base import ElementState, Element
 from navyfox._proxy.descriptors import (
     BoolProperty,
     ChoiceProperty,
@@ -38,7 +38,7 @@ class _RunFormat(TypedDict, total=False):
     language: str
 
 
-class Run(ProxyBase):
+class Run(Element):
     """A run element — a contiguous span of text with uniform character formatting.
 
     **Construction** (before appending to a paragraph):

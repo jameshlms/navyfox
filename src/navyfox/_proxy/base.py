@@ -1,6 +1,6 @@
-"""ProxyBase — the root class for all C#-backed proxy objects.
+"""Element — the root class for all C#-backed document elements.
 
-Every proxy (Paragraph, Run, Table, Row, Cell, Section) lives in one of four states
+Every element (Paragraph, Run, Table, Row, Cell, Section) lives in one of four states
 represented by ElementState:
 
   LIVE         — _native is an int handle; every property access crosses FFI.
@@ -41,7 +41,7 @@ if TYPE_CHECKING:
     from navyfox.document import Document
 
 
-class ProxyBase:
+class Element:
     """Root class for all objects backed by a C# native handle."""
 
     __slots__ = ("_native", "_data", "_document", "_state")
@@ -290,7 +290,7 @@ class _EditProxy:
 
     __slots__ = ("_proxy", "_pending")
 
-    def __init__(self, proxy: ProxyBase, pending: dict[str, Any]) -> None:
+    def __init__(self, proxy: Element, pending: dict[str, Any]) -> None:
         object.__setattr__(self, "_proxy", proxy)
         object.__setattr__(self, "_pending", pending)
 
@@ -310,5 +310,5 @@ class _EditProxy:
                 raise TypeError(f"Cannot batch-write {name!r}={value!r}")
 
     def __getattr__(self, name: str) -> Any:
-        proxy: ProxyBase = object.__getattribute__(self, "_proxy")
+        proxy: Element = object.__getattribute__(self, "_proxy")
         return getattr(proxy, name)

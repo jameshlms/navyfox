@@ -4,14 +4,14 @@ from collections.abc import Iterable, Iterator
 from typing import TYPE_CHECKING, Self, overload
 
 from navyfox._native.handle import Handle
-from navyfox._proxy.base import ProxyBase
+from navyfox._proxy.base import Element
 
 if TYPE_CHECKING:
     from navyfox.document import Document
 
-type ElemTypesArg[T: ProxyBase] = type[T] | tuple[type[T], ...]
+type ElemTypesArg[T: Element] = type[T] | tuple[type[T], ...]
 
-class CollectionMixin[T: ProxyBase]:
+class CollectionMixin[T: Element]:
     @property
     def first(self) -> T | None: ...
     @property
@@ -34,7 +34,7 @@ class CollectionMixin[T: ProxyBase]:
     @overload
     def __getitem__(self, index: slice) -> DocumentView[T]: ...
 
-class DocumentView[T: ProxyBase](CollectionMixin[T]):
+class DocumentView[T: Element](CollectionMixin[T]):
     def __init__(
         self,
         parent_handle: int,
@@ -44,9 +44,9 @@ class DocumentView[T: ProxyBase](CollectionMixin[T]):
         collection_name: str,
     ) -> None: ...
     @staticmethod
-    def empty[VT: ProxyBase](
+    def empty[VT: Element](
         elem_types: ElemTypesArg[VT], collection_name: str
     ) -> DocumentView[VT]: ...
     def __bool__(self) -> bool: ...
-    def __or__[U: ProxyBase](self, other: DocumentView[U]) -> DocumentView[T | U]: ...
+    def __or__[U: Element](self, other: DocumentView[U]) -> DocumentView[T | U]: ...
     def __repr__(self) -> str: ...

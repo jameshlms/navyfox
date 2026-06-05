@@ -3,11 +3,11 @@ from pathlib import Path
 from typing import Any, Literal, overload
 
 from navyfox._collection import DocumentView as DocumentView
-from navyfox._proxy.base import ProxyBase as _ProxyBase
+from navyfox._proxy.base import Element as _Element
 from navyfox.image import Image
 from navyfox.paragraph import HorizontalRule, LineStyleArg, Paragraph
 
-class Cell(_ProxyBase):
+class Cell(_Element):
     text: str
     width: float
     vertical_alignment: Literal["top", "center", "bottom"]
@@ -49,7 +49,7 @@ class Cell(_ProxyBase):
     def __len__(self) -> int: ...
     def __iter__(self) -> Iterator[Paragraph | Table]: ...
 
-class Row(_ProxyBase):
+class Row(_Element):
     height: float
     height_rule: Literal["auto", "exact", "atLeast"]
     is_header: bool
@@ -65,7 +65,7 @@ class Row(_ProxyBase):
     def __iter__(self) -> Iterator[Cell]: ...
     def __getitem__(self, index: int) -> Cell: ...
 
-class Table(_ProxyBase):
+class Table(_Element):
     style: str
     alignment: Literal["left", "center", "right"] | None
     width: float

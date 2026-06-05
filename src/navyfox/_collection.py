@@ -10,13 +10,13 @@ import warnings
 from collections.abc import Iterable, Iterator
 from typing import TYPE_CHECKING, Any, Self, overload
 
-from navyfox._proxy.base import ProxyBase
+from navyfox._proxy.base import Element
 from navyfox.errors import NativeRuntimeError, OwnershipError
 
-type ElemTypesArg[T: ProxyBase] = type[T] | tuple[type[T], ...]
+type ElemTypesArg[T: Element] = type[T] | tuple[type[T], ...]
 
 
-def _to_elem_tuple[T: ProxyBase](arg: ElemTypesArg[T]) -> tuple[type[T], ...]:
+def _to_elem_tuple[T: Element](arg: ElemTypesArg[T]) -> tuple[type[T], ...]:
     return (arg,) if isinstance(arg, type) else arg
 
 
@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from navyfox.document import Document
 
 
-class CollectionMixin[T: ProxyBase]:
+class CollectionMixin[T: Element]:
     """Shared live-collection behaviour for :class:`Document` and :class:`DocumentView`.
 
     Provides list-like access (``__len__``, ``__iter__``, ``__getitem__``,
@@ -352,7 +352,7 @@ class CollectionMixin[T: ProxyBase]:
         return self._make_proxy(self._handle_at(index))
 
 
-class DocumentView[T: ProxyBase](CollectionMixin[T]):
+class DocumentView[T: Element](CollectionMixin[T]):
     """Live view over a typed subset of a document element's children.
 
     A ``DocumentView`` holds a reference to the parent handle and a collection
@@ -394,7 +394,7 @@ class DocumentView[T: ProxyBase](CollectionMixin[T]):
         self._collection_name = collection_name
 
     @staticmethod
-    def empty[VT: ProxyBase](
+    def empty[VT: Element](
         elem_types: ElemTypesArg[VT], collection_name: str
     ) -> DocumentView[VT]:
         """Return an empty, inert DocumentView with no native handle."""
@@ -403,7 +403,7 @@ class DocumentView[T: ProxyBase](CollectionMixin[T]):
     def __bool__(self) -> bool:
         return self._count() > 0
 
-    def __or__[U: ProxyBase](self, other: DocumentView[U]) -> DocumentView[T | U]:
+    def __or__[U: Element](self, other: DocumentView[U]) -> DocumentView[T | U]:
         return _UnionView(
             self._parent_handle,
             self._document,
@@ -420,7 +420,7 @@ class DocumentView[T: ProxyBase](CollectionMixin[T]):
             return f"DocumentView[{names}](<error>)"
 
 
-class _SliceView[T: ProxyBase](DocumentView[T]):
+class _SliceView[T: Element](DocumentView[T]):
     """A fixed-size view over a slice of a parent collection (snapshot of handles)."""
 
     def __init__(
@@ -459,7 +459,7 @@ class _SliceView[T: ProxyBase](DocumentView[T]):
         return self._items[index]
 
 
-class _UnionView[T: ProxyBase](DocumentView[T]):
+class _UnionView[T: Element](DocumentView[T]):
     """A view over the full body, returning all matching element types."""
 
     pass

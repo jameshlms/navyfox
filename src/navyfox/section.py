@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Literal, Self, TypedDict, Unpack, override
 
 from navyfox._block import BlockContainerMixin
-from navyfox._proxy.base import ElementState, ProxyBase
+from navyfox._proxy.base import ElementState, Element
 from navyfox._proxy.descriptors import BoolProperty, ChoiceProperty, FloatProperty
 
 if TYPE_CHECKING:
@@ -27,7 +27,7 @@ class _SectionFormat(TypedDict, total=False):
     different_first_page: bool
 
 
-class Section(BlockContainerMixin, ProxyBase):
+class Section(BlockContainerMixin, Element):
     """A document section — controls page layout for a contiguous range of body content.
 
     Sections are live proxies accessed through :attr:`~navyfox.document.Document.sections`:

@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TYPE_CHECKING, overload
 
-from navyfox._proxy.base import ProxyBase
+from navyfox._proxy.base import Element
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 type BlockCtx = tuple[int, Handle, Document]
 
 
-class _BlockViewProperty[T: ProxyBase]:
+class _BlockViewProperty[T: Element]:
     """Collection view descriptor that silently absorbs ``__iadd__`` re-assignment.
 
     Accepts a zero-argument callable that returns the element type, called once and
@@ -91,7 +91,7 @@ class BlockContainerMixin:
         """Return ``(handle, lib, document)`` for collection access, or ``None`` when not live."""
         raise NotImplementedError(f"{type(self).__name__} must implement _block_context()")
 
-    def _block_view[T: ProxyBase](
+    def _block_view[T: Element](
         self,
         elem_type: type[T],
         collection: str,
@@ -104,7 +104,7 @@ class BlockContainerMixin:
         handle, lib, document = ctx
         return DocumentView(handle, document, lib, elem_type, collection)
 
-    def _block_append[T: ProxyBase](self, element: T) -> T:
+    def _block_append[T: Element](self, element: T) -> T:
         ctx = self._block_context()
         if ctx is None:
             raise ValueError(f"Cannot add content to a {type(self).__name__} that is not live.")
