@@ -6,7 +6,8 @@ on:
     types: [completed]
 
 permissions:
-  contents: read
+  contents: write  # create GitHub releases and upload assets
+  actions: read    # download artifacts from the build workflow run
 
 jobs:
   build-wheel:
@@ -74,7 +75,15 @@ jobs:
         if: matrix.wheel_plat
         run: wheel tags --platform-tag ${{ matrix.wheel_plat }} --remove dist/*.whl
 
-      - name: Publish to PyPI
+      - name: Upload wheel to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.workflow_run.head_branch }}
+          files: dist/*.whl
+          fail_on_unmatched_files: true
+
+      - name: Publish wheel to PyPI
+        if: ${{ secrets.PYPI_TOKEN != '' }}
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
@@ -103,7 +112,15 @@ jobs:
       - name: Build sdist
         run: python -m build --sdist --no-isolation
 
-      - name: Publish to PyPI
+      - name: Upload sdist to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.workflow_run.head_branch }}
+          files: dist/*.tar.gz
+          fail_on_unmatched_files: true
+
+      - name: Publish sdist to PyPI
+        if: ${{ secrets.PYPI_TOKEN != '' }}
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}

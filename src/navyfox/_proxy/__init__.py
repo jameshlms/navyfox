@@ -1,5 +1,5 @@
 # navyfox._proxy — proxy base and descriptor machinery
-from navyfox._proxy.base import Element
+from navyfox._proxy.base import Definition, Element, NativeProxy
 from navyfox._proxy.descriptors import (
     BoolProperty,
     ChoiceProperty,
@@ -11,7 +11,9 @@ from navyfox._proxy.descriptors import (
 )
 
 __all__ = [
+    "NativeProxy",
     "Element",
+    "Definition",
     "BoolProperty",
     "IntProperty",
     "StringProperty",

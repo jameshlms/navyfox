@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from typing import TYPE_CHECKING, Any, Literal, cast, override
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, cast, overload, override
 
-from navyfox._proxy.base import Element, ElementState
+from navyfox._proxy.base import Definition, ElementState
 from navyfox._proxy.descriptors import (
     BoolProperty,
     ChoiceProperty,
@@ -20,44 +20,69 @@ if TYPE_CHECKING:
     from navyfox.document import Document
 
 
-class Style(Element):
-    """A document style definition — always live, backed by a native handle.
+class Style(Definition):
+    """Base class for all document style definitions.
 
     Obtained from :class:`StyleCollection` via ``doc.styles["Heading1"]`` or
-    by iterating ``doc.styles``, or created via ``doc.styles.register("My Style")``.
+    by iterating ``doc.styles``.
 
-    Metadata properties (read/write):
+    All style types share these properties:
 
     - ``name`` — display name (e.g. ``"Heading 1"``)
-    - ``type`` — ``"paragraph"``, ``"character"``, ``"table"``, or ``"numbering"``
+    - ``style_id`` — internal markup id (e.g. ``"Heading1"``)
     - ``based_on`` — parent style name/id, or ``None``
-    - ``next_style`` — style for the following paragraph, or ``None``
     - ``is_default`` — ``True`` if this is the document's default paragraph style
+    - ``type`` — ``"paragraph"``, ``"character"``, ``"table"``, or ``"numbering"``
 
-    Character formatting (read/write, stored in the style's ``<w:rPr>``):
-
-    - ``bold``, ``italic``, ``underline``, ``color``, ``font_name``, ``font_size``
-
-    Paragraph formatting (read/write, stored in the style's ``<w:pPr>``):
-
-    - ``alignment``, ``space_before``, ``space_after``, ``line_spacing``
-    - ``indent_left``, ``indent_right``, ``indent_hanging``
+    Use :class:`ParagraphStyle`, :class:`CharacterStyle`, :class:`TableStyle`,
+    or :class:`NumberingStyle` directly when you need type-specific properties.
     """
 
     __slots__ = ()
-    _child_type_name = "style"
 
-    # Metadata
+    type: ClassVar[str]
+
     style_id = StringProperty("style_id", default="")
     name = StringProperty("style_name", default="")
-    type: ChoiceProperty[Literal["paragraph", "character", "table", "numbering"]] = ChoiceProperty(
-        "style_type", ("paragraph", "character", "table", "numbering"), default="paragraph"
-    )
     based_on = NullableStringProperty("based_on")
-    next_style = NullableStringProperty("next_style")
     is_default = BoolProperty("is_default")
 
-    # Character formatting
+    @override
+    def _copy_data(self) -> dict[str, Any]:
+        if not self._is_live:
+            return dict(self._data)
+        return self._live_copy_data()
+
+    def _live_copy_data(self) -> dict[str, Any]:
+        return {
+            "style_name": self.name,
+            "based_on": self.based_on,
+            "is_default": self.is_default,
+        }
+
+    @override
+    def __repr__(self) -> str:
+        if self.state is ElementState.STALE:
+            return f"{type(self).__name__}(<stale>)"
+        if self._native is None:
+            return f"{type(self).__name__}(spec)"
+        try:
+            return f"{type(self).__name__}({self.name!r})"
+        except Exception:
+            return f"{type(self).__name__}(<error>)"
+
+
+class CharacterStyle(Style):
+    """A character style — applies run-level formatting only.
+
+    Character formatting properties (read/write, stored in ``<w:rPr>``):
+
+    - ``bold``, ``italic``, ``underline``, ``color``, ``font_name``, ``font_size``
+    """
+
+    __slots__ = ()
+    type: ClassVar[Literal["character"]] = "character"
+
     bold = BoolProperty("bold")
     italic = BoolProperty("italic")
     underline: ChoiceProperty[Literal["single", "double", "dotted", "dashed", "wave"]] = (
@@ -71,7 +96,35 @@ class Style(Element):
     font_name = StringProperty("font_name", default="")
     font_size = FloatProperty("font_size", default=0.0)
 
-    # Paragraph formatting
+    @override
+    def _live_copy_data(self) -> dict[str, Any]:
+        return {
+            **super()._live_copy_data(),
+            "bold": self.bold,
+            "italic": self.italic,
+            "underline": self.underline,
+            "color": self.color,
+            "font_name": self.font_name,
+            "font_size": self.font_size,
+        }
+
+
+class ParagraphStyle(CharacterStyle):
+    """A paragraph style — applies both paragraph and character formatting.
+
+    Paragraph formatting properties (read/write, stored in ``<w:pPr>``):
+
+    - ``next_style`` — style applied to the following paragraph
+    - ``alignment``, ``space_before``, ``space_after``, ``line_spacing``
+    - ``indent_left``, ``indent_right``, ``indent_hanging``
+
+    Inherits all :class:`CharacterStyle` properties.
+    """
+
+    __slots__ = ()
+    type: ClassVar[Literal["paragraph"]] = "paragraph"
+
+    next_style = NullableStringProperty("next_style")
     alignment: ChoiceProperty[Literal["left", "right", "center", "justify"]] = ChoiceProperty(
         "alignment", ("left", "right", "center", "justify")
     )
@@ -83,21 +136,10 @@ class Style(Element):
     indent_hanging = FloatProperty("indent_hanging", default=0.0)
 
     @override
-    def _copy_data(self) -> dict[str, Any]:
-        if not self._is_live:
-            return dict(self._data)
+    def _live_copy_data(self) -> dict[str, Any]:
         return {
-            "style_name": self.name,
-            "style_type": self.type,
-            "based_on": self.based_on,
+            **super()._live_copy_data(),
             "next_style": self.next_style,
-            "is_default": self.is_default,
-            "bold": self.bold,
-            "italic": self.italic,
-            "underline": self.underline,
-            "color": self.color,
-            "font_name": self.font_name,
-            "font_size": self.font_size,
             "alignment": self.alignment,
             "space_before": self.space_before,
             "space_after": self.space_after,
@@ -107,17 +149,29 @@ class Style(Element):
             "indent_hanging": self.indent_hanging,
         }
 
-    @override
-    def __repr__(self) -> str:
-        if self.state is ElementState.STALE:
-            return "Style(<stale>)"
-        native = self._native
-        if native is None:
-            return "Style(spec)"
-        try:
-            return f"Style({self.name!r})"
-        except Exception:
-            return "Style(<error>)"
+
+class TableStyle(Style):
+    """A table style — applies table-level formatting."""
+
+    __slots__ = ()
+    type: ClassVar[Literal["table"]] = "table"
+
+
+class NumberingStyle(Style):
+    """A numbering style — defines list numbering formats."""
+
+    __slots__ = ()
+    type: ClassVar[Literal["numbering"]] = "numbering"
+
+
+type AnyStyle = ParagraphStyle | CharacterStyle | TableStyle | NumberingStyle
+
+_STYLE_TYPE_MAP: dict[str, type[AnyStyle]] = {
+    "paragraph": ParagraphStyle,
+    "character": CharacterStyle,
+    "table": TableStyle,
+    "numbering": NumberingStyle,
+}
 
 
 class StyleCollection:
@@ -133,7 +187,7 @@ class StyleCollection:
             print(style.name, style.type)
 
     Supports ``len()``, iteration, ``in`` (by style name/id), dict-style
-    lookup by name/id, and :meth:`add` for creating new styles.
+    lookup by name/id, and :meth:`register` for creating new styles.
 
     Raises:
         KeyError: When a style name is not found.
@@ -157,20 +211,26 @@ class StyleCollection:
     def _get_lib(self) -> Handle:
         return cast("Handle", object.__getattribute__(self._doc, "_lib"))
 
+    def _style_from_handle(self, h: int) -> AnyStyle:
+        type_str = self._get_lib().get_str(h, "style_type")
+        cls: type[AnyStyle] = _STYLE_TYPE_MAP.get(type_str, ParagraphStyle)
+        return cls._from_native(h, self._doc)
+
     @property
-    def default(self) -> Style | None:
+    def default(self) -> ParagraphStyle | None:
         try:
             h = self._get_lib().get_child_handle(self._handle, "default_style", 0)
-            return Style._from_native(h, self._doc)
+            style = self._style_from_handle(h)
+            return style if isinstance(style, ParagraphStyle) else None
         except Exception:
             return None
 
-    def __getitem__(self, name: str) -> Style:
+    def __getitem__(self, name: str) -> AnyStyle:
         try:
             h = self._get_lib().get_child_handle(self._handle, f"style:{name}", 0)
             if not h:
                 raise KeyError(name)
-            return Style._from_native(h, self._doc)
+            return self._style_from_handle(h)
         except KeyError:
             raise
         except Exception:
@@ -183,7 +243,7 @@ class StyleCollection:
         except KeyError:
             return False
 
-    def __iter__(self) -> Iterator[Style]:
+    def __iter__(self) -> Iterator[AnyStyle]:
         try:
             n = self._get_lib().get_count(self._handle, "styles")
         except Exception:
@@ -191,7 +251,7 @@ class StyleCollection:
         for i in range(n):
             try:
                 h = self._get_lib().get_child_handle(self._handle, "styles", i)
-                yield Style._from_native(h, self._doc)
+                yield self._style_from_handle(h)
             except Exception:
                 pass
 
@@ -210,6 +270,62 @@ class StyleCollection:
             return name_or_id
         return self._get_name_to_id().get(name_or_id)
 
+    @overload
+    def register(
+        self,
+        name: str,
+        *,
+        type: Literal["paragraph"] = ...,
+        based_on: str | None = ...,
+        next_style: str | None = ...,
+        style_id: str | None = ...,
+        bold: bool = ...,
+        italic: bool = ...,
+        underline: bool | Literal["single", "double", "dotted", "dashed", "wave"] | None = ...,
+        color: str | None = ...,
+        font_name: str = ...,
+        font_size: float = ...,
+        alignment: Literal["left", "right", "center", "justify"] | None = ...,
+        space_before: float = ...,
+        space_after: float = ...,
+        line_spacing: float = ...,
+        indent_left: float = ...,
+        indent_right: float = ...,
+        indent_hanging: float = ...,
+    ) -> ParagraphStyle: ...
+    @overload
+    def register(
+        self,
+        name: str,
+        *,
+        type: Literal["character"],
+        based_on: str | None = ...,
+        style_id: str | None = ...,
+        bold: bool = ...,
+        italic: bool = ...,
+        underline: bool | Literal["single", "double", "dotted", "dashed", "wave"] | None = ...,
+        color: str | None = ...,
+        font_name: str = ...,
+        font_size: float = ...,
+    ) -> CharacterStyle: ...
+    @overload
+    def register(
+        self,
+        name: str,
+        *,
+        type: Literal["table"],
+        based_on: str | None = ...,
+        style_id: str | None = ...,
+    ) -> TableStyle: ...
+    @overload
+    def register(
+        self,
+        name: str,
+        *,
+        type: Literal["numbering"],
+        based_on: str | None = ...,
+        style_id: str | None = ...,
+    ) -> NumberingStyle: ...
     def register(
         self,
         name: str,
@@ -233,7 +349,7 @@ class StyleCollection:
         indent_left: float = 0.0,
         indent_right: float = 0.0,
         indent_hanging: float = 0.0,
-    ) -> Style:
+    ) -> AnyStyle:
         """Create and register a new style in the document.
 
         Args:
@@ -253,16 +369,16 @@ class StyleCollection:
             font_name: Font family name.
             font_size: Font size in points.
             alignment: Paragraph alignment — ``"left"``, ``"right"``,
-                ``"center"``, or ``"justify"``.
-            space_before: Space before paragraph in points.
-            space_after: Space after paragraph in points.
-            line_spacing: Line spacing multiplier (e.g. ``1.5``).
-            indent_left: Left indent in inches.
-            indent_right: Right indent in inches.
-            indent_hanging: Hanging indent in inches.
+                ``"center"``, or ``"justify"`` (paragraph styles only).
+            space_before: Space before paragraph in points (paragraph styles only).
+            space_after: Space after paragraph in points (paragraph styles only).
+            line_spacing: Line spacing multiplier, e.g. ``1.5`` (paragraph styles only).
+            indent_left: Left indent in inches (paragraph styles only).
+            indent_right: Right indent in inches (paragraph styles only).
+            indent_hanging: Hanging indent in inches (paragraph styles only).
 
         Returns:
-            The newly created :class:`Style` object.
+            The newly created style object.
         """
         lib = self._get_lib()
         if style_id is None:
@@ -277,7 +393,8 @@ class StyleCollection:
             lib.set_str(h, "style_name", name)
             lib.set_str(h, "style_type", type)
 
-        style = Style._from_native(h, self._doc)
+        cls = _STYLE_TYPE_MAP.get(type, ParagraphStyle)
+        style = cls._from_native(h, self._doc)
 
         changes: dict[str, Any] = {}
         if based_on is not None:
@@ -295,21 +412,21 @@ class StyleCollection:
         if font_name:
             changes["font_name"] = font_name
         if font_size:
-            changes["font_size"] = font_size
+            changes["font_size"] = float(font_size)
         if alignment is not None:
             changes["alignment"] = alignment
         if space_before:
-            changes["space_before"] = space_before
+            changes["space_before"] = float(space_before)
         if space_after:
-            changes["space_after"] = space_after
+            changes["space_after"] = float(space_after)
         if line_spacing:
-            changes["line_spacing"] = line_spacing
+            changes["line_spacing"] = float(line_spacing)
         if indent_left:
-            changes["indent_left"] = indent_left
+            changes["indent_left"] = float(indent_left)
         if indent_right:
-            changes["indent_right"] = indent_right
+            changes["indent_right"] = float(indent_right)
         if indent_hanging:
-            changes["indent_hanging"] = indent_hanging
+            changes["indent_hanging"] = float(indent_hanging)
         if changes:
             style._apply_changes(changes)
 

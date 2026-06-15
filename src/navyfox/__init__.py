@@ -14,7 +14,7 @@ so it can be used after the document is closed.
 """
 
 from navyfox._collection import DocumentView
-from navyfox._proxy.base import Element
+from navyfox._proxy.base import Definition, Element, NativeProxy
 from navyfox.document import Document
 from navyfox.errors import (
     DocumentClosedError,
@@ -42,7 +42,15 @@ from navyfox.image import Image
 from navyfox.paragraph import HorizontalRule, Paragraph
 from navyfox.run import Run
 from navyfox.section import Section
-from navyfox.styles import Style, StyleCollection
+from navyfox.styles import (
+    AnyStyle,
+    CharacterStyle,
+    NumberingStyle,
+    ParagraphStyle,
+    Style,
+    StyleCollection,
+    TableStyle,
+)
 from navyfox.table import Cell, Row, Table
 from navyfox.units import (
     Centimeters,
@@ -55,20 +63,19 @@ from navyfox.units import (
 )
 
 
-def snapshot[T: Element](elem: T) -> T:
+def snapshot[T: NativeProxy](elem: T) -> T:
     """Return a document-independent copy of *elem*.
 
-    The returned object is in *construction state* — it has no native handle and
-    can be safely used after the source document is closed. It can also be
-    appended to a different document.
+    The snapshot has no native handle and can be safely used after the source
+    document is closed. For content elements (:class:`Paragraph`, :class:`Run`,
+    :class:`Table`, etc.) the copy can also be appended to a different document.
 
     Args:
-        elem: Any live or construction-state proxy
-            (:class:`Paragraph`, :class:`Run`, :class:`Table`, etc.).
+        elem: Any live proxy — content element or definition
+            (:class:`Paragraph`, :class:`Run`, :class:`Table`, :class:`Style`, etc.).
 
     Returns:
-        A new construction-state object of the same type with all properties
-        copied from *elem*.
+        A new snapshot object of the same type with all properties copied from *elem*.
 
     Example:
         .. code-block:: python
@@ -86,7 +93,9 @@ def snapshot[T: Element](elem: T) -> T:
 __all__ = [
     # Core
     "snapshot",
+    "NativeProxy",
     "Element",
+    "Definition",
     "Document",
     "DocumentView",
     "Paragraph",
@@ -99,7 +108,12 @@ __all__ = [
     "Cell",
     "Section",
     # Styles
+    "AnyStyle",
     "Style",
+    "ParagraphStyle",
+    "CharacterStyle",
+    "TableStyle",
+    "NumberingStyle",
     "StyleCollection",
     # Format types
     "RGBColor",
