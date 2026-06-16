@@ -1,21 +1,21 @@
 name: Release
 
 on:
-  workflow_run:
-    workflows: ["Build Native Binaries"]
-    types: [completed]
+  push:
+    tags:
+      - "v*"
 
 permissions:
   contents: write  # create GitHub releases and upload assets
-  actions: read    # download artifacts from the build workflow run
 
 jobs:
+  build-native:
+    uses: ./.github/workflows/build-native.yml
+
   build-wheel:
     name: Build wheel (${{ matrix.rid }})
     runs-on: ubuntu-24.04
-    if: >
-      github.event.workflow_run.conclusion == 'success' &&
-      startsWith(github.event.workflow_run.head_branch, 'v')
+    needs: build-native
     strategy:
       fail-fast: false
       matrix:
@@ -35,16 +35,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Download native binary
         uses: actions/download-artifact@v4
         with:
           name: native-${{ matrix.rid }}
           path: src/navyfox/_libs/${{ matrix.rid }}/
-          run-id: ${{ github.event.workflow_run.id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Remove .gitkeep placeholders
         run: find src/navyfox/_libs -name '.gitkeep' -delete
@@ -78,12 +74,12 @@ jobs:
       - name: Upload wheel to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event.workflow_run.head_branch }}
+          tag_name: ${{ github.ref_name }}
           files: dist/*.whl
           fail_on_unmatched_files: true
 
       - name: Publish wheel to PyPI
-        if: ${{ secrets.PYPI_TOKEN != '' }}
+        if: secrets.PYPI_TOKEN != ''
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
@@ -92,14 +88,9 @@ jobs:
   build-sdist:
     name: Build sdist
     runs-on: ubuntu-24.04
-    if: >
-      github.event.workflow_run.conclusion == 'success' &&
-      startsWith(github.event.workflow_run.head_branch, 'v')
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -115,12 +106,12 @@ jobs:
       - name: Upload sdist to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event.workflow_run.head_branch }}
+          tag_name: ${{ github.ref_name }}
           files: dist/*.tar.gz
           fail_on_unmatched_files: true
 
       - name: Publish sdist to PyPI
-        if: ${{ secrets.PYPI_TOKEN != '' }}
+        if: secrets.PYPI_TOKEN != ''
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
