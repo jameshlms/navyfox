@@ -196,6 +196,7 @@ class Table(Element):
 
     __slots__ = ()
     _child_type_name = "table"
+    _collection_name = "tables"
 
     style = StringProperty("style", default="TableGrid")
     alignment: ChoiceProperty[Literal["left", "center", "right"]] = ChoiceProperty(

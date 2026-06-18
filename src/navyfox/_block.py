@@ -33,10 +33,14 @@ class _BlockViewProperty[T: Element]:
     cached, so circular imports at module load time are not an issue.
     """
 
-    def __init__(self, type_factory: Callable[[], type[T]], collection: str) -> None:
+    def __init__(self, type_factory: Callable[[], type[T]]) -> None:
         self._factory = type_factory
-        self._collection = collection
         self._type: type[T] | None = None
+
+    def _resolve(self) -> tuple[type[T], str]:
+        if self._type is None:
+            self._type = self._factory()
+        return self._type, self._type._collection_name
 
     @overload
     def __get__(self, obj: None, objtype: type) -> _BlockViewProperty[T]: ...
@@ -48,9 +52,8 @@ class _BlockViewProperty[T: Element]:
     ) -> DocumentView[T] | _BlockViewProperty[T]:
         if obj is None:
             return self
-        if self._type is None:
-            self._type = self._factory()
-        return obj._block_view(self._type, self._collection)
+        elem_type, collection = self._resolve()
+        return obj._block_view(elem_type, collection)
 
     def __set__(self, obj: BlockContainerMixin, _: object) -> None:
         pass  # absorbs __iadd__ re-assignment
@@ -118,8 +121,8 @@ class BlockContainerMixin:
     # Filtered views
     # ------------------------------------------------------------------
 
-    paragraphs: _BlockViewProperty[Paragraph] = _BlockViewProperty(_paragraph_type, "paragraphs")
-    tables: _BlockViewProperty[Table] = _BlockViewProperty(_table_type, "tables")
+    paragraphs: _BlockViewProperty[Paragraph] = _BlockViewProperty(_paragraph_type)
+    tables: _BlockViewProperty[Table] = _BlockViewProperty(_table_type)
 
     # ------------------------------------------------------------------
     # Convenience helpers

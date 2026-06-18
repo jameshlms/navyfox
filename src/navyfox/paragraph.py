@@ -58,6 +58,7 @@ class Paragraph(Element):
 
     __slots__ = ()
     _child_type_name = "paragraph"
+    _collection_name = "paragraphs"
 
     # Descriptors — one line per property, routing handled automatically
     style = StringProperty("style", default="Normal")
@@ -79,6 +80,7 @@ class Paragraph(Element):
         "list_style", ("bullet", "number")
     )
     list_level = IntProperty("list_level", default=0)  # 0–8
+    is_horizontal_rule = BoolProperty("_horizontal_line")
 
     @property
     def text(self) -> str:

@@ -370,7 +370,7 @@ class Document(BlockContainerMixin, CollectionMixin[Element]):
     # Filtered views
     # ------------------------------------------------------------------
 
-    sections: _BlockViewProperty[Section] = _BlockViewProperty(_section_type, "sections")
+    sections: _BlockViewProperty[Section] = _BlockViewProperty(_section_type)
 
     @property
     def margins(self) -> PageMargins:

@@ -35,7 +35,7 @@ class Handle:
         self._setup()
 
     def _setup(self) -> None:
-        c = self._lib
+        c: ctypes.CDLL = self._lib
 
         # Document lifecycle
         c.create_document.argtypes = []

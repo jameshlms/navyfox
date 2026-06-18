@@ -51,6 +51,7 @@ class Section(BlockContainerMixin, Element):
 
     __slots__ = tuple()
     _child_type_name = "section"
+    _collection_name = "sections"
 
     orientation: ChoiceProperty[Literal["portrait", "landscape"]] = ChoiceProperty(
         "orientation", ("portrait", "landscape"), default="portrait"
