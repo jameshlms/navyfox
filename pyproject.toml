@@ -4,12 +4,16 @@ build-backend = "maturin"
 
 [project]
 name = "navyfox"
-version = "0.1.1"
+version = "0.1.2"
 description = "Deep DOCX manipulation via a C# Native AOT shared library"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.12"
 dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/jameshlms/navyfox"
+Repository = "https://github.com/jameshlms/navyfox"
 
 [project.optional-dependencies]
 pandas = [
@@ -32,7 +36,6 @@ dev = [
 ]
 
 [tool.maturin]
-manifest-path = "ext/Cargo.toml"
 python-source = "src"
 module-name = "navyfox._navyfox"
 
@@ -40,6 +43,7 @@ module-name = "navyfox._navyfox"
 strict = true
 python_version = "3.12"
 exclude = ["tests/"]
+mypy_path = "src"
 
 [[tool.mypy.overrides]]
 module = ["docx.*"]
@@ -63,10 +67,12 @@ known-first-party = ["navyfox"]
 [tool.pyright]
 pythonVersion = "3.12"
 reportPrivateUsage = "none"
+extraPaths = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v --tb=short"
+pythonpath = ["src"]
 
 [dependency-groups]
 dev = [
