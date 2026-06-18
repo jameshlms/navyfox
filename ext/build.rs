@@ -11,8 +11,8 @@ fn main() {
     let (rid, lib_file) = match (target_os.as_str(), target_arch.as_str()) {
         ("linux", "x86_64")    => ("linux-x64",  "NavyFox.Native.so"),
         ("linux", "aarch64")   => ("linux-arm64", "NavyFox.Native.so"),
-        ("windows", "x86_64")  => ("win-x64",    "NavyFox.Native.lib"),
-        ("windows", "aarch64") => ("win-arm64",  "NavyFox.Native.lib"),
+        ("windows", "x86_64")  => ("win-x64",    "NavyFox.Native.dll"),
+        ("windows", "aarch64") => ("win-arm64",  "NavyFox.Native.dll"),
         ("macos", "aarch64")   => ("osx-arm64",  "NavyFox.Native.dylib"),
         ("macos", "x86_64")    => ("osx-x64",    "NavyFox.Native.dylib"),
         (os, arch) => panic!("navyfox: unsupported platform {os}/{arch}"),
@@ -49,7 +49,6 @@ fn main() {
             if link_dst.exists() {
                 std::fs::remove_file(&link_dst).unwrap();
             }
-            // build.rs runs on the host; for our supported platforms host==target.
             #[cfg(unix)]
             std::os::unix::fs::symlink(&lib_src, &link_dst).unwrap();
             println!("cargo:rustc-link-search=native={}", out_dir.display());
