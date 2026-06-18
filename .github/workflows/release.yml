@@ -59,7 +59,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install build tools
-        run: python -m pip install --upgrade pip build wheel twine auditwheel
+        run: python -m pip install --upgrade pip build wheel twine auditwheel hatchling
 
       - name: Install patchelf (Linux wheels)
         if: ${{ matrix.auditwheel_plat }}
@@ -113,7 +113,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install build tools
-        run: python -m pip install --upgrade pip build twine
+        run: python -m pip install --upgrade pip build twine hatchling
 
       - name: Build sdist
         run: python -m build --sdist --no-isolation

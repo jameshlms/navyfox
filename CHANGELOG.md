@@ -19,4 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `check_struct_layouts.py` CI guard for FFI struct annotations.
 - GitHub Actions workflows: `build-native`, `ci`, `release`.
 
+## [0.1.1] — 2026-06-18
+
+### Fixed
+
+- Release workflow: add `hatchling` to build tool installs so `python -m build --no-isolation` can find the build backend.
+
 ## [0.1.0] — Unreleased
