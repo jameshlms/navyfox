@@ -23,16 +23,22 @@ jobs:
       matrix:
         include:
           - rid: linux-x64
+            lib_name: NavyFox.Native.so
             auditwheel_plat: manylinux_2_28_x86_64
           - rid: linux-arm64
+            lib_name: NavyFox.Native.so
             auditwheel_plat: manylinux_2_28_aarch64
           - rid: win-x64
+            lib_name: NavyFox.Native.dll
             wheel_plat: win_amd64
           - rid: win-arm64
+            lib_name: NavyFox.Native.dll
             wheel_plat: win_arm64
           - rid: osx-arm64
+            lib_name: NavyFox.Native.dylib
             wheel_plat: macosx_12_0_arm64
           - rid: osx-x64
+            lib_name: NavyFox.Native.dylib
             wheel_plat: macosx_12_0_x86_64
 
     steps:
@@ -72,6 +78,20 @@ jobs:
       - name: Retag wheel (non-Linux)
         if: ${{ matrix.wheel_plat }}
         run: wheel tags --platform-tag ${{ matrix.wheel_plat }} --remove dist/*.whl
+
+      - name: Stage native binary as release asset
+        shell: bash
+        run: |
+          mkdir -p native_asset
+          cp src/navyfox/_libs/${{ matrix.rid }}/${{ matrix.lib_name }} \
+             native_asset/${{ matrix.rid }}-${{ matrix.lib_name }}
+
+      - name: Upload native binary to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: native_asset/${{ matrix.rid }}-${{ matrix.lib_name }}
+          fail_on_unmatched_files: true
 
       - name: Upload wheel to GitHub Release
         uses: softprops/action-gh-release@v2
