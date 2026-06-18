@@ -73,7 +73,7 @@ jobs:
         with:
           target: ${{ matrix.rust_target }}
           manylinux: ${{ matrix.manylinux || 'off' }}
-          args: --release --out dist
+          args: --release --out dist --find-interpreter
 
       - name: Bundle dylib with delocate (macOS)
         if: runner.os == 'macOS'
