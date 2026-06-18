@@ -1,11 +1,12 @@
 """FFI transport layer — delegates all calls to the _navyfox Rust extension."""
+
 from __future__ import annotations
 
 from typing import Any
 
-import _navyfox as _nx
-
 from navyfox.errors import NativeRuntimeError
+
+from .. import _navyfox as _nf
 
 _cached: Handle | None = None
 
@@ -28,61 +29,61 @@ class Handle:
     # ── Document lifecycle ────────────────────────────────────────────────
 
     def create_document(self) -> int:
-        return _call(_nx.create_document)
+        return _call(_nf.create_document)
 
     def open_document(self, path: str) -> int:
-        return _call(_nx.open_document, path)
+        return _call(_nf.open_document, path)
 
     def edit_document(self, path: str) -> int:
-        return _call(_nx.edit_document, path)
+        return _call(_nf.edit_document, path)
 
     def save_document(self, handle: int, path: str) -> None:
-        _call(_nx.save_document, handle, path)
+        _call(_nf.save_document, handle, path)
 
     def dispose(self, handle: int) -> None:
-        _nx.dispose(handle)
+        _nf.dispose(handle)
 
     # ── Generic property access ───────────────────────────────────────────
 
     def get_int(self, handle: int, name: str) -> int:
-        return int(_nx.get_int(handle, name))
+        return int(_nf.get_int(handle, name))
 
     def set_int(self, handle: int, name: str, value: int) -> None:
-        _call(_nx.set_int, handle, name, value)
+        _call(_nf.set_int, handle, name, value)
 
     def get_float(self, handle: int, name: str) -> float:
-        return _call(_nx.get_float, handle, name)
+        return _call(_nf.get_float, handle, name)
 
     def set_float(self, handle: int, name: str, value: float) -> None:
-        _call(_nx.set_float, handle, name, value)
+        _call(_nf.set_float, handle, name, value)
 
     def get_str(self, handle: int, name: str) -> str:
-        return _call(_nx.get_str, handle, name)
+        return _call(_nf.get_str, handle, name)
 
     def set_str(self, handle: int, name: str, value: str) -> None:
-        _call(_nx.set_str, handle, name, value)
+        _call(_nf.set_str, handle, name, value)
 
     # ── Collection operations ─────────────────────────────────────────────
 
     def get_count(self, handle: int, collection: str) -> int:
-        return _call(_nx.get_count, handle, collection)
+        return _call(_nf.get_count, handle, collection)
 
     def get_child_handle(self, handle: int, collection: str, index: int) -> int:
-        return _call(_nx.get_child_handle, handle, collection, index)
+        return _call(_nf.get_child_handle, handle, collection, index)
 
     def append_child(self, handle: int, child_type: str) -> int:
-        return _call(_nx.append_child, handle, child_type)
+        return _call(_nf.append_child, handle, child_type)
 
     def remove_child(self, handle: int) -> None:
-        _call(_nx.remove_child, handle)
+        _call(_nf.remove_child, handle)
 
     def get_element_type(self, handle: int) -> str:
-        return _nx.get_element_type(handle)
+        return _nf.get_element_type(handle)
 
     # ── Special-case constructors ─────────────────────────────────────────
 
     def add_table(self, doc_handle: int, rows: int, cols: int) -> int:
-        return _call(_nx.add_table, doc_handle, rows, cols)
+        return _call(_nf.add_table, doc_handle, rows, cols)
 
     def add_image(
         self,
@@ -92,10 +93,10 @@ class Handle:
         width_emu: int,
         height_emu: int,
     ) -> int:
-        return _call(_nx.add_image, parent_handle, data, content_type, width_emu, height_emu)
+        return _call(_nf.add_image, parent_handle, data, content_type, width_emu, height_emu)
 
     def get_image_data(self, handle: int) -> bytes:
-        return _call(_nx.get_image_data, handle)
+        return _call(_nf.get_image_data, handle)
 
     # ── Batch write ───────────────────────────────────────────────────────
 
@@ -104,18 +105,14 @@ class Handle:
             if value is None:
                 continue
             match value:
-                case bool():
+                case int() | bool():
                     self.set_int(handle, name, int(value))
-                case int():
-                    self.set_int(handle, name, value)
                 case float() if value != 0.0:
                     self.set_float(handle, name, value)
                 case str() if value:
                     self.set_str(handle, name, value)
                 case _:
-                    raise ValueError(
-                        f"Unsupported value type for {name!r}: {type(value).__name__}"
-                    )
+                    raise ValueError(f"Unsupported value type for {name!r}: {type(value).__name__}")
 
 
 def get_handle() -> Handle:

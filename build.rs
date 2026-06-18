@@ -1,8 +1,7 @@
 use std::{env, path::PathBuf};
 
 fn main() {
-    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
-    let repo_root = manifest_dir.parent().unwrap().to_owned();
+    let repo_root = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
 
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
@@ -37,12 +36,9 @@ fn main() {
 
     match target_os.as_str() {
         "windows" => {
-            // Windows: import library uses the base name without a lib prefix.
             println!("cargo:rustc-link-search=native={}", lib_dir.display());
         }
         _ => {
-            // Unix: cargo expects lib-prefixed filenames. Create a symlink in
-            // OUT_DIR so cargo:rustc-link-lib=dylib=NavyFox.Native resolves.
             let suffix = if target_os == "macos" { "dylib" } else { "so" };
             let link_name = format!("libNavyFox.Native.{suffix}");
             let link_dst = out_dir.join(&link_name);
@@ -52,8 +48,6 @@ fn main() {
             #[cfg(unix)]
             std::os::unix::fs::symlink(&lib_src, &link_dst).unwrap();
             println!("cargo:rustc-link-search=native={}", out_dir.display());
-            // Absolute rpath for local dev. Distribution will fix this via
-            // auditwheel (Linux) or install_name_tool (macOS).
             println!("cargo:rustc-link-arg=-Wl,-rpath,{}", lib_dir.display());
         }
     }
