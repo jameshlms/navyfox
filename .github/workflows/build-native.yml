@@ -103,6 +103,10 @@ jobs:
           ${{ matrix.publish_props }}
           -o publish/${{ matrix.rid }}
 
+      - name: Fix dylib install name (macOS)
+        if: runner.os == 'macOS'
+        run: install_name_tool -id @rpath/${{ matrix.lib_name }} publish/${{ matrix.rid }}/${{ matrix.lib_name }}
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
