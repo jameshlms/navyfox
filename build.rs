@@ -36,7 +36,8 @@ fn main() {
 
     match target_os.as_str() {
         "windows" => {
-            println!("cargo:rustc-link-search=native={}", lib_dir.display());
+            // raw-dylib in lib.rs generates import stubs at compile time —
+            // no .lib file or link-search needed.
         }
         _ => {
             let suffix = if target_os == "macos" { "dylib" } else { "so" };
@@ -49,8 +50,7 @@ fn main() {
             std::os::unix::fs::symlink(&lib_src, &link_dst).unwrap();
             println!("cargo:rustc-link-search=native={}", out_dir.display());
             println!("cargo:rustc-link-arg=-Wl,-rpath,{}", lib_dir.display());
+            println!("cargo:rustc-link-lib=dylib=NavyFox.Native");
         }
     }
-
-    println!("cargo:rustc-link-lib=dylib=NavyFox.Native");
 }

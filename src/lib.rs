@@ -2,6 +2,7 @@ use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
 
 mod ffi {
+    #[cfg_attr(target_os = "windows", link(name = "NavyFox.Native", kind = "raw-dylib"))]
     extern "C" {
         // Document lifecycle
         pub fn create_document() -> isize;
