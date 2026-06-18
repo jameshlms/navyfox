@@ -120,7 +120,7 @@ class TestDocumentAsCollection:
         doc.paragraphs.append(Paragraph("Temp"))
         para = doc.paragraphs[0]
         doc.paragraphs.remove(para)
-        with pytest.raises(StaleProxyError, match=r"snapshot\(\)"):
+        with pytest.raises(StaleProxyError, match=r"copy\(\)"):
             _ = para.text
 
     def test_pop_removes_and_returns(self):
@@ -224,7 +224,7 @@ class TestParagraphProxy:
         doc.paragraphs.append(Paragraph("bye"))
         para = doc.paragraphs[0]
         doc.close()
-        with pytest.raises(DocumentClosedError, match=r"snapshot\(\)"):
+        with pytest.raises(DocumentClosedError, match=r"copy\(\)"):
             _ = para.text
 
     def test_stale_proxy_raises_on_access(self):
@@ -234,7 +234,7 @@ class TestParagraphProxy:
         doc.paragraphs.append(Paragraph("gone"))
         para = doc.paragraphs[0]
         doc.paragraphs.remove(para)
-        with pytest.raises(StaleProxyError, match=r"snapshot\(\)"):
+        with pytest.raises(StaleProxyError, match=r"copy\(\)"):
             _ = para.text
 
     def test_unknown_attribute_raises(self):
@@ -574,7 +574,7 @@ class TestRunProxy:
         from navyfox.errors import StaleProxyError
         run, _ = self._para_with_run("temp")
         object.__setattr__(run, "_state", ElementState.STALE)
-        with pytest.raises(StaleProxyError, match=r"snapshot\(\)"):
+        with pytest.raises(StaleProxyError, match=r"copy\(\)"):
             _ = run.text
 
     def test_spec_run_has_correct_data(self):
