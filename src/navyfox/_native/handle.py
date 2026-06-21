@@ -1,5 +1,3 @@
-"""FFI transport layer — delegates all calls to the _navyfox Rust extension."""
-
 from __future__ import annotations
 
 from typing import Any
@@ -12,7 +10,6 @@ _cached: Handle | None = None
 
 
 def _call(fn, *args):
-    """Invoke a _navyfox function, re-raising RuntimeError as NativeRuntimeError."""
     try:
         return fn(*args)
     except RuntimeError as exc:
@@ -20,14 +17,6 @@ def _call(fn, *args):
 
 
 class Handle:
-    """Thin adapter over the _navyfox Rust extension.
-
-    Presents the same interface as the old ctypes Handle so all proxy and
-    descriptor code above this layer is unchanged.
-    """
-
-    # ── Document lifecycle ────────────────────────────────────────────────
-
     def create_document(self) -> int:
         return _call(_nf.create_document)
 
@@ -42,8 +31,6 @@ class Handle:
 
     def dispose(self, handle: int) -> None:
         _nf.dispose(handle)
-
-    # ── Generic property access ───────────────────────────────────────────
 
     def get_int(self, handle: int, name: str) -> int:
         return int(_nf.get_int(handle, name))
@@ -63,8 +50,6 @@ class Handle:
     def set_str(self, handle: int, name: str, value: str) -> None:
         _call(_nf.set_str, handle, name, value)
 
-    # ── Collection operations ─────────────────────────────────────────────
-
     def get_count(self, handle: int, collection: str) -> int:
         return _call(_nf.get_count, handle, collection)
 
@@ -79,8 +64,6 @@ class Handle:
 
     def get_element_type(self, handle: int) -> str:
         return _nf.get_element_type(handle)
-
-    # ── Special-case constructors ─────────────────────────────────────────
 
     def add_table(self, doc_handle: int, rows: int, cols: int) -> int:
         return _call(_nf.add_table, doc_handle, rows, cols)
@@ -98,8 +81,6 @@ class Handle:
     def get_image_data(self, handle: int) -> bytes:
         return _call(_nf.get_image_data, handle)
 
-    # ── Batch write ───────────────────────────────────────────────────────
-
     def set_many(self, handle: int, data: dict[str, Any]) -> None:
         for name, value in data.items():
             if value is None:
@@ -107,7 +88,7 @@ class Handle:
             match value:
                 case int() | bool():
                     self.set_int(handle, name, int(value))
-                case float() if value != 0.0:
+                case float():
                     self.set_float(handle, name, value)
                 case str() if value:
                     self.set_str(handle, name, value)
@@ -116,7 +97,6 @@ class Handle:
 
 
 def get_handle() -> Handle:
-    """Return the lazily-created Handle singleton."""
     global _cached
     if _cached is None:
         _cached = Handle()

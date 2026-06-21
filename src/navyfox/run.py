@@ -446,7 +446,7 @@ class Run(Element):
 
     @override
     def _copy_data(self) -> dict[str, Any]:
-        if not self._is_live:
+        if not self.is_live:
             return dict(self._data)
         lib = self._get_lib()
         native = self._require_native

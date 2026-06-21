@@ -102,7 +102,7 @@ class Section(BlockContainerMixin, Element):
 
     @override
     def _block_context(self) -> tuple[int, Handle, Document] | None:
-        if not self._is_live:
+        if not self.is_live:
             return None
         self._check_valid()
         handle, doc = self._require_live()

@@ -49,7 +49,7 @@ class Style(Definition):
 
     @override
     def _copy_data(self) -> dict[str, Any]:
-        if not self._is_live:
+        if not self.is_live:
             return dict(self._data)
         return self._live_copy_data()
 

@@ -1,10 +1,3 @@
-"""BlockContainerMixin — paragraph and table collections for body-like containers.
-
-Both ``Document`` and ``Cell`` use this mixin. Concrete classes must implement
-``_block_context()`` which returns the ``(handle, lib, document)`` triple needed to
-build live ``DocumentView`` objects, or ``None`` when the container is not yet live.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -72,26 +65,11 @@ def _table_type() -> type[Table]:
 
 
 class BlockContainerMixin:
-    """Mixin that adds ``paragraphs``, ``tables``, and ``add_*`` convenience helpers.
-
-    Applied to :class:`~navyfox.document.Document` and :class:`~navyfox.table.Cell`.
-    Concrete classes implement :meth:`_block_context`; everything else is derived
-    from that single hook.
-
-    Provides:
-
-    - ``paragraphs`` -- live :class:`~navyfox.collection.DocumentView` of paragraphs
-    - ``tables`` -- live :class:`~navyfox.collection.DocumentView` of tables
-    - :meth:`add_paragraph` -- create and append a paragraph in one call
-    - :meth:`add_heading` -- create and append a heading paragraph in one call
-    - :meth:`add_table` -- create and append a table in one call
-    - :meth:`add_horizontal_rule` -- create and append a horizontal rule in one call
-    """
+    """Mixin for ``Document`` and ``Cell`` that adds paragraph/table collections and ``add_*`` helpers."""
 
     __slots__ = ()
 
     def _block_context(self) -> BlockCtx | None:
-        """Return ``(handle, lib, document)`` for collection access, or ``None`` when not live."""
         raise NotImplementedError(f"{type(self).__name__} must implement _block_context()")
 
     def _block_view[T: Element](
@@ -117,58 +95,20 @@ class BlockContainerMixin:
         view = DocumentView(handle, document, lib, type(element), "body")
         return view._append_one(element)
 
-    # ------------------------------------------------------------------
-    # Filtered views
-    # ------------------------------------------------------------------
-
     paragraphs: _BlockViewProperty[Paragraph] = _BlockViewProperty(_paragraph_type)
     tables: _BlockViewProperty[Table] = _BlockViewProperty(_table_type)
 
-    # ------------------------------------------------------------------
-    # Convenience helpers
-    # ------------------------------------------------------------------
-
     def add_paragraph(self, text: str = "", style: str = "Normal") -> Paragraph:
-        """Append a new paragraph and return the live proxy.
-
-        Args:
-            text: Initial text content. Defaults to an empty paragraph.
-            style: Paragraph style name. Defaults to ``"Normal"``.
-
-        Returns:
-            A live :class:`~navyfox.paragraph.Paragraph` proxy.
-        """
         from navyfox.paragraph import Paragraph
 
         return self._block_append(Paragraph(text, style=style))
 
     def add_heading(self, text: str = "", level: int = 1) -> Paragraph:
-        """Append a heading paragraph and return the live proxy.
-
-        This is a shorthand for ``add_paragraph(text, style="Heading<level>")``.
-
-        Args:
-            text: Heading text.
-            level: Heading level (1–9). Defaults to ``1``.
-
-        Returns:
-            A live :class:`~navyfox.paragraph.Paragraph` proxy styled as a heading.
-        """
         from navyfox.paragraph import Paragraph
 
         return self._block_append(Paragraph(text, style=f"Heading{level}"))
 
     def add_table(self, rows: int, cols: int, style: str = "TableGrid") -> Table:
-        """Append a new table and return the live proxy.
-
-        Args:
-            rows: Number of rows.
-            cols: Number of columns.
-            style: Table style name. Defaults to ``"TableGrid"``.
-
-        Returns:
-            A live :class:`~navyfox.table.Table` proxy.
-        """
         from navyfox.table import Table
 
         return self._block_append(Table(rows, cols, style=style))
@@ -180,17 +120,6 @@ class BlockContainerMixin:
         line_width: float = 6.0,
         line_color: str = "auto",
     ) -> HorizontalRule:
-        """Append a horizontal rule and return the live proxy.
-
-        Args:
-            line_style: Border style — ``"single"`` (default), ``"double"``,
-                ``"dotted"``, ``"dashed"``, or ``"wave"``.
-            line_width: Rule thickness in points. Defaults to ``6.0``.
-            line_color: Rule colour as ``"#RRGGBB"`` or ``"auto"``. Defaults to ``"auto"``.
-
-        Returns:
-            A live :class:`~navyfox.paragraph.HorizontalRule` proxy.
-        """
         from navyfox.paragraph import HorizontalRule
 
         return self._block_append(
@@ -198,23 +127,11 @@ class BlockContainerMixin:
         )
 
     def add_bullet(self, text: str = "", level: int = 0) -> Paragraph:
-        """Append a bullet list item and return the live proxy.
-
-        Args:
-            text: Item text.
-            level: Nesting level (0–8). Defaults to ``0``.
-        """
         from navyfox.paragraph import Paragraph
 
         return self._block_append(Paragraph(text, list_style="bullet", list_level=level))
 
     def add_numbered(self, text: str = "", level: int = 0) -> Paragraph:
-        """Append a numbered list item and return the live proxy.
-
-        Args:
-            text: Item text.
-            level: Nesting level (0–8). Defaults to ``0``.
-        """
         from navyfox.paragraph import Paragraph
 
         return self._block_append(Paragraph(text, list_style="number", list_level=level))
@@ -229,24 +146,6 @@ class BlockContainerMixin:
         height: float = 0.0,
         alt_text: str = "",
     ) -> Image:
-        """Append a standalone paragraph containing a single inline image.
-
-        Creates a new blank paragraph, appends the image to it, and returns
-        the live :class:`~navyfox.image.Image` proxy — the same pattern as
-        ``python-docx``'s ``add_picture()``.
-
-        Args:
-            src: Path to an image file. Content type is inferred from the
-                extension unless *content_type* is also given.
-            data: Raw image bytes (alternative to *src*).
-            content_type: MIME type, e.g. ``"image/png"``.
-            width: Display width in inches. ``0.0`` uses the image's natural size.
-            height: Display height in inches. ``0.0`` uses the image's natural size.
-            alt_text: Accessibility description for screen readers.
-
-        Returns:
-            A live :class:`~navyfox.image.Image` proxy for the inserted image.
-        """
         from navyfox.paragraph import Paragraph
 
         para = self._block_append(Paragraph())

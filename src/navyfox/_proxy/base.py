@@ -1,27 +1,3 @@
-"""NativeProxy, Element, and Definition — the native-handle proxy hierarchy.
-
-NativeProxy
-  Base for all objects backed by a C# native handle. Provides the state
-  machine, FFI dispatch, descriptor protocol, and snapshot machinery.
-  Never instantiated directly — use _from_native or subclass via Element.
-
-Element (NativeProxy)
-  Document content objects: Paragraph, Run, Table, Row, Cell, Section, etc.
-  Adds CONSTRUCTION state so objects can be built in Python then attached to
-  a document. Carries _child_type_name / _collection_name ClassVars.
-
-Definition (NativeProxy)
-  Document definition objects: Style, etc. Always created via _from_native;
-  direct construction raises TypeError.
-
-States (ElementState):
-  LIVE         — _native is an int handle; every property access crosses FFI.
-  CONSTRUCTION — _native is None; data lives in _data dict; no handle yet.
-                 Valid only for Element subclasses.
-  SNAPSHOT     — _native is None; _data populated by copy(); safe outside ctx manager.
-  STALE        — removed from document; all access raises StaleProxyError.
-"""
-
 from __future__ import annotations
 
 import contextlib
@@ -35,8 +11,6 @@ from navyfox.units import Color as _Color
 
 
 class ElementState(enum.Enum):
-    """The lifecycle state of a proxy object."""
-
     CONSTRUCTION = "construction"
     LIVE = "live"
     SNAPSHOT = "snapshot"
@@ -63,10 +37,6 @@ class NativeProxy:
     _document: Document | None
     _state: ElementState
 
-    # ------------------------------------------------------------------
-    # Construction
-    # ------------------------------------------------------------------
-
     @classmethod
     def _from_native(cls, native_handle: int, document: Document) -> Self:
         instance = cls.__new__(cls)
@@ -76,33 +46,21 @@ class NativeProxy:
         instance._data = {}
         return instance
 
-    # ------------------------------------------------------------------
-    # State
-    # ------------------------------------------------------------------
-
     @property
     def state(self) -> ElementState:
-        """The current lifecycle state of this proxy."""
         return self._state
 
     @property
     def is_live(self) -> bool:
-        """True when backed by a native handle in an open document."""
         return self._state is ElementState.LIVE
 
     @property
     def is_snapshot(self) -> bool:
-        """True when this is a document-independent copy made by ``copy()``."""
         return self._state is ElementState.SNAPSHOT
 
     @property
     def is_stale(self) -> bool:
-        """True when the element has been removed from its document."""
         return self._state is ElementState.STALE
-
-    @property
-    def _is_live(self) -> bool:
-        return self.is_live
 
     def _check_valid(self) -> None:
         if self._state is ElementState.STALE:
@@ -146,15 +104,10 @@ class NativeProxy:
         self._check_valid()
         return self._native, self._document
 
-    # ------------------------------------------------------------------
-    # Batch write
-    # ------------------------------------------------------------------
-
     def _apply_changes(self, changes: dict[str, Any]) -> None:
-        """Apply *changes* in one FFI call, or a dict update when not live."""
         if not changes:
             return
-        if not self._is_live:
+        if not self.is_live:
             self._data.update(changes)
         else:
             self._check_valid()
@@ -163,22 +116,8 @@ class NativeProxy:
 
     @contextlib.contextmanager
     def edit(self) -> Iterator[Self]:
-        """Context manager that batches property writes into a single FFI call.
-
-        Prefer the class-specific ``format()`` for straightforward updates.
-        Use ``edit()`` when the batch requires conditional logic:
-
-        .. code-block:: python
-
-            with para.edit() as p:
-                if urgent:
-                    p.space_before = 0.0
-                p.alignment = "left"
-
-        On a non-live proxy ``edit()`` is a no-op — writes already go
-        directly to the local data dict.
-        """
-        if not self._is_live:
+        """Batch property writes into a single FFI call. Use format() for simple updates."""
+        if not self.is_live:
             yield self
             return
         self._check_valid()
@@ -187,12 +126,8 @@ class NativeProxy:
         if pending:
             self._get_lib().set_many(cast(int, self._native), pending)
 
-    # ------------------------------------------------------------------
-    # Attribute routing
-    # ------------------------------------------------------------------
-
     def _get_data(self) -> dict[str, Any]:
-        if self._is_live:
+        if self.is_live:
             self._check_valid()
         return self._data
 
@@ -227,18 +162,8 @@ class NativeProxy:
         except KeyError:
             raise AttributeError(f"{type(self).__name__!r} has no attribute {name!r}") from None
 
-    # ------------------------------------------------------------------
-    # Snapshot / copy
-    # ------------------------------------------------------------------
-
     def __copydocelem__(self) -> Self:
-        """Return a mutable snapshot with no native handle.
-
-        Safe to use outside the document context manager.
-        Modifying the snapshot does not affect the document.
-        Called by the module-level ``snapshot()`` function.
-        """
-        if self._is_live:
+        if self.is_live:
             self._check_valid()
         data = self._copy_data()
         instance: Self = type(self).__new__(type(self))
@@ -249,18 +174,10 @@ class NativeProxy:
         return instance
 
     def copy(self) -> Self:
-        """Return a document-independent snapshot of this proxy.
-
-        Equivalent to the module-level ``snapshot()`` function.
-        """
         return self.__copydocelem__()
 
     @abstractmethod
     def _copy_data(self) -> dict[str, Any]: ...
-
-    # ------------------------------------------------------------------
-    # Identity
-    # ------------------------------------------------------------------
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, type(self)):
@@ -282,12 +199,7 @@ class NativeProxy:
 
 
 class Element(NativeProxy):
-    """Root class for document content objects backed by a C# native handle.
-
-    Subclasses (Paragraph, Run, Table, Row, Cell, Section …) may exist in any
-    of the four ElementState values, including CONSTRUCTION — where an object is
-    built in Python and later attached to a document via an ``append`` call.
-    """
+    """Base for document content objects (Paragraph, Run, Table, …). Supports CONSTRUCTION state."""
 
     __slots__ = ()
 
@@ -302,16 +214,38 @@ class Element(NativeProxy):
 
     @property
     def is_construction(self) -> bool:
-        """True when this is a manually constructed spec not yet appended to a document."""
         return self._state is ElementState.CONSTRUCTION
+
+    def _build_native(
+        self,
+        parent_handle: int,
+        lib: Handle,
+        data: dict[str, Any],
+        document: Document,
+    ) -> int:
+        """Materialize this element in the native layer and return its handle.
+
+        Subclasses with special-case native constructors (Table, Image) override
+        this. The default handles ordinary append_child elements (Run, Paragraph,
+        HorizontalRule, Hyperlink, …).
+        """
+        child_handle = lib.append_child(parent_handle, type(self)._child_type_name)
+        runs_data: list[Any] | None = data.get("runs")
+        plain_data = {k: v for k, v in data.items() if k != "runs"}
+        if plain_data:
+            lib.set_many(child_handle, plain_data)
+        if runs_data:
+            for run in runs_data:
+                run_data: dict[str, Any] = object.__getattribute__(run, "_data")
+                run_handle = lib.append_child(child_handle, "run")
+                if run_data:
+                    lib.set_many(run_handle, run_data)
+                run._attach(run_handle, document)
+        return child_handle
 
 
 class Definition(NativeProxy):
-    """Root class for document definition objects backed by a C# native handle.
-
-    Subclasses (Style …) are always created via ``_from_native``; they have no
-    meaningful construction state and cannot be instantiated directly.
-    """
+    """Base for document definition objects (Style, …). Always created via _from_native."""
 
     __slots__ = ()
 

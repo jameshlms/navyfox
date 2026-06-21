@@ -1,5 +1,3 @@
-"""Paragraph proxy."""
-
 from __future__ import annotations
 
 from collections.abc import Iterable, Iterator
@@ -40,27 +38,11 @@ class _ParagraphFormat(TypedDict, total=False):
 
 
 class Paragraph(Element):
-    """A paragraph element — either a live proxy or a construction object.
-
-    __slots__ = () — all instance state is in Element slots.
-
-    **Construction object** (before appending to a document)::
-
-        para = Paragraph("Hello", style="Heading1", alignment="center")
-        doc.paragraphs.append(para)
-
-    **Live proxy** (after appending, or from doc.paragraphs[i])::
-
-        para = doc.paragraphs[0]
-        para.text = "Updated"
-        para.alignment = "center"
-    """
 
     __slots__ = ()
     _child_type_name = "paragraph"
     _collection_name = "paragraphs"
 
-    # Descriptors — one line per property, routing handled automatically
     style = StringProperty("style", default="Normal")
     alignment: ChoiceProperty[Literal["left", "right", "center", "justify"]] = ChoiceProperty(
         "alignment", ("left", "right", "center", "justify")
@@ -84,13 +66,7 @@ class Paragraph(Element):
 
     @property
     def text(self) -> str:
-        """The full text content of the paragraph, as the concatenation of all run texts.
-
-        In construction state, derived from the paragraph's run list. When live,
-        reads from the native layer (which synthesizes the same value from runs).
-        Setting ``text`` replaces the entire run list with a single unstyled run.
-        """
-        if self._is_live:
+        if self.is_live:
             self._check_valid()
             return self._get_lib().get_str(self._require_native, "text") or ""
         self._check_valid()
@@ -98,7 +74,7 @@ class Paragraph(Element):
 
     @text.setter
     def text(self, value: str) -> None:
-        if self._is_live:
+        if self.is_live:
             self._check_valid()
             self._get_lib().set_str(self._require_native, "text", value)
             return
@@ -164,15 +140,11 @@ class Paragraph(Element):
             data["list_level"] = int(list_level)
         self._data = data
 
-    # ------------------------------------------------------------------
-    # Runs collection
-    # ------------------------------------------------------------------
-
     @property
     def runs(self) -> DocumentView[Run]:
         from navyfox.run import Run
 
-        if not self._is_live:
+        if not self.is_live:
             runs_list: list[Any] = self._get_data().setdefault("runs", [])
             return _ConstructionRunsView(runs_list)  # type: ignore[return-value]
         self._check_valid()
@@ -181,29 +153,18 @@ class Paragraph(Element):
 
     @property
     def images(self) -> DocumentView[Image]:
-        """Live filtered view of inline images in this paragraph."""
         from navyfox.image import Image
 
-        if not self._is_live:
+        if not self.is_live:
             return DocumentView.empty(Image, "images")
         self._check_valid()
         handle, doc = self._require_live()
         return DocumentView(handle, doc, self._get_lib(), Image, "images")
 
-    # ------------------------------------------------------------------
-    # Builder methods (return Self for chaining)
-    # ------------------------------------------------------------------
-
     def add_run(self, text: str = "") -> Run:
-        """Append a new run and return it.
-
-        Works in both construction state (returns a construction-state :class:`~navyfox.run.Run`
-        added to the paragraph's run list) and live state (materialises the run in the
-        native layer immediately).
-        """
         from navyfox.run import Run
 
-        if not self._is_live:
+        if not self.is_live:
             run = Run(text)
             self._get_data().setdefault("runs", []).append(run)
             return run
@@ -223,19 +184,9 @@ class Paragraph(Element):
         height: float = 0.0,
         alt_text: str = "",
     ) -> Image:
-        """Append an inline image and return the live proxy.
-
-        Args:
-            src: Path to an image file.
-            data: Raw image bytes (alternative to *src*).
-            content_type: MIME type; inferred from *src* extension if omitted.
-            width: Display width in inches.
-            height: Display height in inches.
-            alt_text: Accessibility description.
-        """
         from navyfox.image import Image
 
-        if not self._is_live:
+        if not self.is_live:
             raise ValueError("Cannot add_image to a paragraph that is not yet in a document.")
         return self.images._append_one(
             Image(
@@ -250,84 +201,45 @@ class Paragraph(Element):
 
     @property
     def hyperlinks(self) -> DocumentView[Hyperlink]:
-        """Live filtered view of inline hyperlinks in this paragraph."""
         from navyfox.hyperlink import Hyperlink
 
-        if not self._is_live:
+        if not self.is_live:
             return DocumentView.empty(Hyperlink, "hyperlinks")
         self._check_valid()
         handle, doc = self._require_live()
         return DocumentView(handle, doc, self._get_lib(), Hyperlink, "hyperlinks")
 
     def add_hyperlink(self, text: str, url: str) -> Hyperlink:
-        """Append an inline hyperlink and return the live proxy.
-
-        Args:
-            text: Display text shown to the reader.
-            url:  Target URL.
-        """
         from navyfox.hyperlink import Hyperlink
 
-        if not self._is_live:
+        if not self.is_live:
             raise ValueError("Cannot add_hyperlink to a paragraph that is not yet in a document.")
         return self.hyperlinks._append_one(Hyperlink(text, url))
 
     def add_break(self) -> Self:
-        """Append a soft line break (Shift+Enter) and return *self* for chaining.
-
-        Inserts ``<w:r><w:br w:type="textWrapping"/></w:r>`` — a line break
-        within the paragraph, not a new paragraph.
-        """
-        if not self._is_live:
+        """Append a soft line break within the paragraph and return self."""
+        if not self.is_live:
             raise ValueError("Cannot add_break to a paragraph that is not yet in a document.")
         self._check_valid()
         self._get_lib().append_child(self._require_native, "break")
         return self
 
     def align(self, alignment: Literal["left", "right", "center", "justify"]) -> Self:
-        """Set paragraph alignment and return *self* for chaining.
-
-        Args:
-            alignment: One of ``"left"``, ``"right"``, ``"center"``, ``"justify"``.
-        """
         self.alignment = alignment
         return self
 
     def set_style(self, style: str) -> Self:
-        """Set the paragraph style name and return *self* for chaining.
-
-        Args:
-            style: Style name as it appears in the document's style table,
-                e.g. ``"Heading1"``, ``"Normal"``, ``"ListBullet"``.
-        """
         self.style = style
         return self
 
-    # ------------------------------------------------------------------
-    # Batch write
-    # ------------------------------------------------------------------
-
     def format(self, **kwargs: Unpack[_ParagraphFormat]) -> Self:
-        """Set multiple paragraph properties in a single FFI call and return *self*.
-
-        Only the keyword arguments you pass are changed; omitted properties are
-        left untouched.
-
-        Example:
-            .. code-block:: python
-
-                para.format(space_before=6.0, space_after=6.0, line_spacing=1.15)
-        """
+        """Set multiple paragraph properties in a single FFI call and return self."""
         self._apply_changes(dict(kwargs))
         return self
 
-    # ------------------------------------------------------------------
-    # Materialisation
-    # ------------------------------------------------------------------
-
     @override
     def _copy_data(self) -> dict[str, Any]:
-        if not self._is_live:
+        if not self.is_live:
             data = dict(self._data)
             if "runs" in data:
                 data["runs"] = [r.copy() for r in data["runs"]]
@@ -349,10 +261,6 @@ class Paragraph(Element):
             "runs": [r.copy() for r in self.runs],
         }
 
-    # ------------------------------------------------------------------
-    # Dunders
-    # ------------------------------------------------------------------
-
     @override
     def __repr__(self) -> str:
         if self.state is ElementState.STALE:
@@ -372,7 +280,7 @@ class Paragraph(Element):
         return bool(self.text)
 
     def __len__(self) -> int:
-        if not self._is_live:
+        if not self.is_live:
             data = self._get_data()
             return len(data.get("runs", []))
         try:
@@ -388,11 +296,7 @@ class Paragraph(Element):
 
 
 class _ConstructionRunsView:
-    """Mutable view over a construction-state paragraph's run list.
-
-    Backed directly by ``_data["runs"]``, so mutations (append, remove) are
-    reflected immediately. Mirrors the ``DocumentView[Run]`` interface.
-    """
+    """Mutable run list for construction-state paragraphs. Mirrors the DocumentView[Run] interface."""
 
     _collection_name = "runs"
 
@@ -472,8 +376,6 @@ class _ConstructionRunsView:
 
 
 class LineStyle(StrEnum):
-    """Border style for a horizontal rule."""
-
     SINGLE = "single"
     DOUBLE = "double"
     DOTTED = "dotted"
@@ -485,18 +387,6 @@ LineStyleArg = LineStyle | Literal["single", "double", "dotted", "dashed", "wave
 
 
 class HorizontalRule(Paragraph):
-    """A paragraph that renders as a horizontal rule.
-
-    **Construction**::
-
-        rule = HorizontalRule(line_style="double", line_color="#333333")
-        doc.paragraphs.append(rule)
-
-    **Live proxy** (from ``doc.add_horizontal_rule()``)::
-
-        rule = doc.add_horizontal_rule(line_style="dashed", line_width=1.0)
-        rule.line_color = "#999999"
-    """
 
     __slots__ = ()
 
@@ -505,11 +395,8 @@ class HorizontalRule(Paragraph):
         ("single", "double", "dotted", "dashed", "wave"),
         default="single",
     )
-    """Border style of the rule. One of ``"single"``, ``"double"``, ``"dotted"``, ``"dashed"``, ``"wave"``."""
     line_width = FloatProperty("hr_width", default=1.0)
-    """Rule thickness in points. Default ``1.0``."""
     line_color = ColorProperty("hr_color")
-    """Rule colour as ``"#RRGGBB"`` or ``"auto"``. Default ``"auto"``."""
 
     def __init__(
         self,
@@ -527,7 +414,7 @@ class HorizontalRule(Paragraph):
 
     @override
     def _copy_data(self) -> dict[str, Any]:
-        if not self._is_live:
+        if not self.is_live:
             return dict(self._data)
         data = super()._copy_data()
         data["_horizontal_line"] = True

@@ -1,9 +1,3 @@
-"""DocumentView[T] — the live generic collection type for all proxy elements.
-
-A DocumentView is never a copy. It holds a reference to the parent object and
-the collection name, and reflects the current document state on every access.
-"""
-
 from __future__ import annotations
 
 import warnings
@@ -26,28 +20,13 @@ if TYPE_CHECKING:
 
 
 class CollectionMixin[T: Element]:
-    """Shared live-collection behaviour for :class:`Document` and :class:`DocumentView`.
-
-    Provides list-like access (``__len__``, ``__iter__``, ``__getitem__``,
-    ``__contains__``) plus mutation helpers (``append``, ``extend``, ``remove``,
-    ``pop``, ``clear``).
-
-    Every method queries the native layer — there is no Python-side cache.
-    Indices and lengths reflect the document state at the time of the call.
-
-    Concrete subclasses must expose: ``_lib``, ``_document``, ``_elem_types``,
-    ``_collection_name``, and ``_parent_handle`` (property or int).
-    """
+    """Shared live-collection behaviour for Document and DocumentView. All reads hit the native layer."""
 
     _lib: Handle
     _document: Document
     _elem_types: tuple[type[T], ...]
     _collection_name: str
     _parent_handle: int
-
-    # ------------------------------------------------------------------
-    # Core internal helpers
-    # ------------------------------------------------------------------
 
     def _count(self) -> int:
         return self._lib.get_count(
@@ -86,10 +65,7 @@ class CollectionMixin[T: Element]:
                 "Use doc.append() or doc[ParaType | TableType] instead."
             )
 
-    _EMU_PER_INCH = 914400
-
     def _resolve_style(self, data: dict[str, Any]) -> dict[str, Any]:
-        """Replace ``"style"`` value with its style ID if a display name was given."""
         if "style" not in data:
             return data
         name_or_id = str(data["style"])
@@ -99,9 +75,6 @@ class CollectionMixin[T: Element]:
         return {**data, "style": resolved}
 
     def _append_one(self, element: T) -> T:
-        from navyfox.image import Image
-        from navyfox.table import Table
-
         self._validate_element(element)
         native = object.__getattribute__(element, "_native")
         if native is not None:
@@ -114,61 +87,15 @@ class CollectionMixin[T: Element]:
             raise ValueError(f"This {type(element).__name__} is already in a document.")
 
         data: dict[str, Any] = object.__getattribute__(element, "_data")
-
-        if isinstance(element, Table):
-            rows = int(data.get("rows", 1))
-            cols = int(data.get("cols", 1))
-            child_handle = self._lib.add_table(self._parent_handle, rows, cols)
-            filtered = {k: v for k, v in data.items() if k not in ("rows", "cols")}
-            filtered = self._resolve_style(filtered)
-            if filtered:
-                self._lib.set_many(child_handle, filtered)
-        elif isinstance(element, Image):
-            image_data: bytes = data.get("_image_data") or b""
-            content_type: str = data.get("_content_type") or "image/png"
-            width_emu = int(float(data.get("width", 0.0)) * self._EMU_PER_INCH)
-            height_emu = int(float(data.get("height", 0.0)) * self._EMU_PER_INCH)
-            child_handle = self._lib.add_image(
-                self._parent_handle, image_data, content_type, width_emu, height_emu
-            )
-            alt_text: str = data.get("alt_text", "")
-            if alt_text:
-                self._lib.set_str(child_handle, "alt_text", alt_text)
-        else:
-            child_handle = self._lib.append_child(
-                self._parent_handle,
-                type(element)._child_type_name,  # type: ignore[reportPrivateUsage]
-            )
-            runs_data: list[Any] | None = data.get("runs")
-            plain_data = {k: v for k, v in data.items() if k != "runs"}
-            plain_data = self._resolve_style(plain_data)
-            if plain_data:
-                self._lib.set_many(child_handle, plain_data)
-            if runs_data:
-                for run in runs_data:
-                    run_data: dict[str, Any] = object.__getattribute__(run, "_data")
-                    run_handle = self._lib.append_child(child_handle, "run")
-                    if run_data:
-                        self._lib.set_many(run_handle, run_data)
-                    run._attach(run_handle, self._document)  # type: ignore[reportPrivateUsage]
-
+        resolved_data = self._resolve_style(data)
+        child_handle = element._build_native(  # type: ignore[reportPrivateUsage]
+            self._parent_handle, self._lib, resolved_data, self._document
+        )
         element._attach(child_handle, self._document)  # type: ignore[reportPrivateUsage]
         return element
 
-    # ------------------------------------------------------------------
-    # Properties
-    # ------------------------------------------------------------------
-
     @property
     def first(self) -> T | None:
-        """Returns the first element of the collection
-
-        Raises:
-            NativeRuntimeError: If the native library returns an error when trying to access the first element
-
-        Returns:
-            T | None: The first element of the collection. Defaults to None if the collection is empty.
-        """
         if self._count() == 0:
             return None
         try:
@@ -178,47 +105,15 @@ class CollectionMixin[T: Element]:
 
     @property
     def last(self) -> T | None:
-        """Returns the last element of the collection
-
-        Raises:
-            NativeRuntimeError: If the native library returns an error when trying to access the last element
-
-        Returns:
-            T | None: The last element of the collection. Defaults to None if the collection is empty.
-        """
         n = self._count()
         if n == 0:
             return None
         return self._make_proxy(self._handle_at(n - 1))
 
-    # ------------------------------------------------------------------
-    # Mutations
-    # ------------------------------------------------------------------
-
     def append(self, element: T) -> None:
-        """Append the provided element to the collection of elements
-
-        Args:
-            element (T): The element to append, being of the same type that is supported by the collection.
-        Raises:
-            OwnershipError: Occurs if the element provided belongs to another document instead of being passed as a snapshot by calling snapshot(element).
-            ValueError: Occurs if the element already exists in the collection.
-            TypeError: Occurs if the element being appened is not of the same type specified by the collection.
-        """
         self._append_one(element)
 
     def extend(self, elements: Iterable[T]) -> None:
-        """Append each element in *elements* to the collection in order.
-
-        Args:
-            elements: An iterable of construction-state proxy objects of the
-                collection's element type.
-
-        Raises:
-            OwnershipError: If any element belongs to a different document.
-            ValueError: If any element is already live in this document.
-            TypeError: If any element is the wrong type for this collection.
-        """
         for elem in elements:
             self._append_one(elem)
 
@@ -266,17 +161,6 @@ class CollectionMixin[T: Element]:
         object.__getattribute__(element, "_mark_stale")()
 
     def pop(self, index: int | None = None) -> T:
-        """Remove an element in a collection at a specified index.
-
-        Args:
-            index (int | None, optional): The index to delete an element at. Defaults to None.
-
-        Raises:
-            IndexError: Occurs if a provided index is outside of range of indexes of the collections.
-
-        Returns:
-            T: The element at the specified index.
-        """
         index = -1 if index is None else index
         n = self._count()
         if index < 0:
@@ -289,30 +173,14 @@ class CollectionMixin[T: Element]:
         return snap
 
     def clear(self) -> None:
-        """Empties the elements of the collection."""
         while self._count() > 0:
             self.remove(self._make_proxy(self._handle_at(0)))
 
     def index(self, element: T) -> int:
-        """Returns the index of the provided element inside of the collection.
-
-        Args:
-            element (T): The element to find the index of.
-
-        Raises:
-            ValueError: Occurs if the element provided does not exist in the collection.
-
-        Returns:
-            int: The index of the element in the collection.
-        """
         for i, item in enumerate(self):
             if item == element:
                 return i
         raise ValueError(f"{element!r} is not in this collection")
-
-    # ------------------------------------------------------------------
-    # Dunders
-    # ------------------------------------------------------------------
 
     def __len__(self) -> int:
         return self._count()
@@ -440,6 +308,9 @@ class _SliceView[T: Element](DocumentView[T]):
     def _count(self) -> int:
         return len(self._items)
 
+    def _handle_at(self, index: int) -> int:
+        raise RuntimeError("_SliceView does not hold native handles")
+
     def __iter__(self) -> Iterator[T]:
         return iter(self._items)
 
@@ -457,6 +328,27 @@ class _SliceView[T: Element](DocumentView[T]):
                 self._collection_name,
             )
         return self._items[index]
+
+    def append(self, element: T) -> None:  # type: ignore[override]
+        raise TypeError("slice views are read-only")
+
+    def extend(self, elements: Any) -> None:  # type: ignore[override]
+        raise TypeError("slice views are read-only")
+
+    def insert(self, index: int, element: T) -> None:  # type: ignore[override]
+        raise TypeError("slice views are read-only")
+
+    def remove(self, element: T) -> None:  # type: ignore[override]
+        raise TypeError("slice views are read-only")
+
+    def pop(self, index: int | None = None) -> T:  # type: ignore[override]
+        raise TypeError("slice views are read-only")
+
+    def clear(self) -> None:  # type: ignore[override]
+        raise TypeError("slice views are read-only")
+
+    def __iadd__(self, elements: Any) -> Self:  # type: ignore[override]
+        raise TypeError("slice views are read-only")
 
 
 class _UnionView[T: Element](DocumentView[T]):

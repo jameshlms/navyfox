@@ -1,5 +1,3 @@
-"""Document — the top-level document object and body collection."""
-
 from __future__ import annotations
 
 import contextlib
@@ -8,7 +6,7 @@ import tempfile
 import threading
 import weakref
 from collections.abc import Iterable
-from typing import IO, TYPE_CHECKING, Any, Self, overload
+from typing import IO, TYPE_CHECKING, Any, ClassVar, Self, overload
 
 import navyfox._native.handle as _handle_mod
 from navyfox._block import BlockContainerMixin, _BlockViewProperty
@@ -32,12 +30,7 @@ _active_count_lock = threading.Lock()
 
 
 def _resolve_open_path(path: _PathArg) -> tuple[str, str | None]:
-    """Return ``(str_path, tmp_path)``.
-
-    For ``str`` / ``PathLike`` inputs *tmp_path* is ``None``.  For ``IO``
-    inputs the bytes are written to a temporary file; *tmp_path* is its path
-    and the caller must delete it when the native handle is released.
-    """
+    """Return (str_path, tmp_path). tmp_path is set for IO inputs and must be deleted after use."""
     if isinstance(path, (str, os.PathLike)):
         return os.fspath(path), None
     data = path.read()
@@ -50,10 +43,7 @@ def _resolve_open_path(path: _PathArg) -> tuple[str, str | None]:
 
 
 class _DocMetaProperty:
-    """Descriptor for Document-level metadata properties stored in the native layer.
-
-    get/set call lib.get_str / lib.set_str directly; readonly=True raises AttributeError on set.
-    """
+    """Document-level metadata descriptor backed by the native layer. readonly=True blocks set."""
 
     def __init__(self, key: str, *, readonly: bool = False) -> None:
         self._key = key
@@ -226,10 +216,6 @@ class Document(BlockContainerMixin, CollectionMixin[Element]):
         """
         return cls._from_path(path, edit=True)
 
-    # ------------------------------------------------------------------
-    # CollectionMixin interface
-    # ------------------------------------------------------------------
-
     @property
     def _parent_handle(self) -> int:
         return self._require_open()
@@ -238,39 +224,17 @@ class Document(BlockContainerMixin, CollectionMixin[Element]):
     def _document(self) -> Document:
         return self
 
-    @property
-    def _elem_types(self) -> tuple[type, ...]:
-        from navyfox.paragraph import Paragraph
-        from navyfox.table import Table
-
-        return (Paragraph, Table)
-
-    # ------------------------------------------------------------------
-    # BlockContainerMixin hook
-    # ------------------------------------------------------------------
+    _elem_types: ClassVar[tuple[type[Paragraph], type[Table]]] = (Paragraph, Table)
 
     def _block_context(self) -> tuple[int, Any, Any]:
         return (self._require_open(), self._lib, self)
 
-    # ------------------------------------------------------------------
-    # Lifecycle
-    # ------------------------------------------------------------------
-
     @property
     def is_open(self) -> bool:
-        """A boolean indicator of whether the document is still open for operations or not.
-
-        Returns:
-            bool: The indicator of whether the document is open or not.
-        """
         return self._open
 
     @property
     def path(self) -> str | None:
-        """The filesystem path associated with this document, or ``None`` for new documents.
-
-        Updated after every successful ``save()`` call.
-        """
         return self._path
 
     def close(self) -> None:
@@ -303,10 +267,6 @@ class Document(BlockContainerMixin, CollectionMixin[Element]):
                 "Call .copy() inside the context manager to use data outside it."
             )
         return self._handle
-
-    # ------------------------------------------------------------------
-    # Save
-    # ------------------------------------------------------------------
 
     def save(self, path: _PathArg | None = None) -> None:
         """Save the document.
@@ -341,10 +301,6 @@ class Document(BlockContainerMixin, CollectionMixin[Element]):
                 with contextlib.suppress(OSError):
                     os.unlink(tmp)
 
-    # ------------------------------------------------------------------
-    # Properties
-    # ------------------------------------------------------------------
-
     @property
     def styles(self) -> StyleCollection:
         from navyfox.styles import StyleCollection
@@ -356,19 +312,11 @@ class Document(BlockContainerMixin, CollectionMixin[Element]):
         return self.styles.default
 
     author = _DocMetaProperty("author")
-    """Core property: document author (``dc:creator``)."""
     title = _DocMetaProperty("title")
-    """Core property: document title (``dc:title``)."""
+    # The native C# API only exposes write access for author and title.
     subject = _DocMetaProperty("subject", readonly=True)
-    """Core property: document subject (``dc:subject``). Read-only."""
     description = _DocMetaProperty("description", readonly=True)
-    """Core property: document description / abstract (``dc:description``). Read-only."""
     language = _DocMetaProperty("language", readonly=True)
-    """Core property: document language tag (``dc:language``), e.g. ``"en-US"``. Read-only."""
-
-    # ------------------------------------------------------------------
-    # Filtered views
-    # ------------------------------------------------------------------
 
     sections: _BlockViewProperty[Section] = _BlockViewProperty(_section_type)
 
@@ -471,10 +419,6 @@ class Document(BlockContainerMixin, CollectionMixin[Element]):
             section.margin_header = pm.header
             section.margin_footer = pm.footer
 
-    # ------------------------------------------------------------------
-    # group() — typed filtered view builder
-    # ------------------------------------------------------------------
-
     def group[T: Element](self, types: list[type[T]]) -> DocumentView[T]:
         """Return a live view over the body containing only the given element types.
 
@@ -501,10 +445,6 @@ class Document(BlockContainerMixin, CollectionMixin[Element]):
             tuple(types),
             "body",
         )
-
-    # ------------------------------------------------------------------
-    # Dunders
-    # ------------------------------------------------------------------
 
     def __bool__(self) -> bool:
         return self._open

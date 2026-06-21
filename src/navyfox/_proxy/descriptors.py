@@ -1,13 +1,3 @@
-"""Descriptor types for proxy property declarations.
-
-Adding a new property is one line:
-
-    class Run(Element):
-        bold = BoolProperty("bold")
-
-Each descriptor handles both live (FFI) and spec (_data) mode transparently.
-"""
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, cast, overload
@@ -16,11 +6,6 @@ from navyfox.units import Color as _Color
 
 if TYPE_CHECKING:
     from navyfox._proxy.base import Element, NativeProxy
-
-
-# ---------------------------------------------------------------------------
-# NullableStringProperty
-# ---------------------------------------------------------------------------
 
 
 class NullableStringProperty:
@@ -56,11 +41,6 @@ class NullableStringProperty:
             object.__getattribute__(obj, "_data")[self._name] = normalized
 
 
-# ---------------------------------------------------------------------------
-# BoolProperty
-# ---------------------------------------------------------------------------
-
-
 class BoolProperty:
     """Boolean property stored as int (0/1) on the C# side. Default False."""
 
@@ -90,11 +70,6 @@ class BoolProperty:
             obj._get_lib().set_int(native, self._name, int(bool(value)))
         else:
             object.__getattribute__(obj, "_data")[self._name] = bool(value)
-
-
-# ---------------------------------------------------------------------------
-# StringProperty
-# ---------------------------------------------------------------------------
 
 
 class StringProperty:
@@ -127,11 +102,6 @@ class StringProperty:
             obj._get_lib().set_str(native, self._name, normalized)
         else:
             object.__getattribute__(obj, "_data")[self._name] = normalized
-
-
-# ---------------------------------------------------------------------------
-# FloatProperty
-# ---------------------------------------------------------------------------
 
 
 class FloatProperty:
@@ -168,11 +138,6 @@ class FloatProperty:
             object.__getattribute__(obj, "_data")[self._name] = v
 
 
-# ---------------------------------------------------------------------------
-# IntProperty
-# ---------------------------------------------------------------------------
-
-
 class IntProperty:
     """Integer property. Default 0. Treats negative native return as 'not set'."""
 
@@ -205,16 +170,8 @@ class IntProperty:
             object.__getattribute__(obj, "_data")[self._name] = v
 
 
-# ---------------------------------------------------------------------------
-# ChoiceProperty
-# ---------------------------------------------------------------------------
-
-
 class ChoiceProperty[L: str]:
-    """String restricted to a tuple of Literal values.
-
-    Set allow_bool=True so True maps to choices[0] and False maps to None.
-    """
+    """String restricted to a tuple of Literal values. allow_bool=True maps True→choices[0], False→None."""
 
     def __init__(
         self,
@@ -262,11 +219,6 @@ class ChoiceProperty[L: str]:
             object.__getattribute__(obj, "_data")[self._name] = value
 
 
-# ---------------------------------------------------------------------------
-# ColorProperty
-# ---------------------------------------------------------------------------
-
-
 class ColorProperty:
     """Accepts "#RRGGBB", "RRGGBB", RGBColor, or "auto". Normalises to bare hex."""
 
@@ -305,17 +257,8 @@ class ColorProperty:
             object.__getattribute__(obj, "_data")[self._name] = normalized
 
 
-# ---------------------------------------------------------------------------
-# ObjectProperty
-# ---------------------------------------------------------------------------
-
-
 class ObjectProperty:
-    """Nested proxy sub-object (Font, Shading, etc.).
-
-    On read: wraps a C# sub-object handle in the appropriate proxy type.
-    On write: validates type before setting.
-    """
+    """Nested proxy sub-object (Font, Shading, etc.)."""
 
     def __init__(self, name: str, proxy_type: type[Element]) -> None:
         self._name = name

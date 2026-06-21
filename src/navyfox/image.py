@@ -15,7 +15,8 @@ from navyfox._proxy.base import Element, ElementState
 from navyfox._proxy.descriptors import FloatProperty, StringProperty
 
 if TYPE_CHECKING:
-    pass
+    from navyfox._native.handle import Handle
+    from navyfox.document import Document
 
 __all__ = ["Image"]
 
@@ -126,13 +127,29 @@ class Image(Element):
 
         self._data = d
 
-    # ------------------------------------------------------------------
-    # Materialisation
-    # ------------------------------------------------------------------
+    _EMU_PER_INCH = 914400
+
+    @override
+    def _build_native(
+        self,
+        parent_handle: int,
+        lib: Handle,
+        data: dict[str, Any],
+        document: Document,
+    ) -> int:
+        image_data: bytes = data.get("_image_data") or b""
+        content_type: str = data.get("_content_type") or "image/png"
+        width_emu = int(float(data.get("width", 0.0)) * self._EMU_PER_INCH)
+        height_emu = int(float(data.get("height", 0.0)) * self._EMU_PER_INCH)
+        child_handle = lib.add_image(parent_handle, image_data, content_type, width_emu, height_emu)
+        alt_text: str = data.get("alt_text", "")
+        if alt_text:
+            lib.set_str(child_handle, "alt_text", alt_text)
+        return child_handle
 
     @override
     def _copy_data(self) -> dict[str, Any]:
-        if not self._is_live:
+        if not self.is_live:
             return dict(self._data)
         lib = self._get_lib()
         native = self._require_native

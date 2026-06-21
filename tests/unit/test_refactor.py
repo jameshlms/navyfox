@@ -661,3 +661,115 @@ class TestStyleCollectionCache:
 
         result = sc._id_for("My Custom Style")
         assert result == "CustomStyle"
+
+
+# ---------------------------------------------------------------------------
+# set_many must write float 0.0 (not silently skip it)
+# ---------------------------------------------------------------------------
+
+class TestSetManyZeroFloat:
+    def test_format_font_size_zero_reaches_native_layer(self):
+        """run.format(font_size=0.0) must call set_float — not be silently skipped."""
+        from navyfox.paragraph import Paragraph
+        from navyfox.run import Run
+        doc, mock = _make_doc()
+        doc.paragraphs.append(Paragraph())
+        para = doc.paragraphs[0]
+        para.runs.append(Run("x", font_size=12.0))
+        run = para.runs[0]
+        run.format(font_size=0.0)
+        assert mock._handles[run._native]["font_size"] == 0.0, (
+            "set_many skipped font_size=0.0 — the 'if value != 0.0' guard is back"
+        )
+
+    def test_float_zero_property_set_directly(self):
+        """run.font_size = 0.0 must write 0.0 to the native layer."""
+        from navyfox.paragraph import Paragraph
+        from navyfox.run import Run
+        doc, mock = _make_doc()
+        doc.paragraphs.append(Paragraph())
+        para = doc.paragraphs[0]
+        para.runs.append(Run("x", font_size=12.0))
+        run = para.runs[0]
+        run.font_size = 0.0
+        assert mock._handles[run._native]["font_size"] == 0.0
+
+    def test_apply_changes_zero_float_propagates(self):
+        """_apply_changes({'space_before': 0.0}) on a live paragraph must reach native."""
+        from navyfox.paragraph import Paragraph
+        doc, mock = _make_doc()
+        doc.paragraphs.append(Paragraph(space_before=6.0))
+        para = doc.paragraphs[0]
+        para.format(space_before=0.0)
+        assert mock._handles[para._native]["space_before"] == 0.0, (
+            "space_before=0.0 was silently dropped"
+        )
+
+
+# ---------------------------------------------------------------------------
+# _SliceView is read-only — mutations must raise TypeError
+# ---------------------------------------------------------------------------
+
+class TestSliceViewReadOnly:
+    def _make_slice(self):
+        from navyfox.paragraph import Paragraph
+        doc, _ = _make_doc()
+        doc.paragraphs.append(Paragraph("A"))
+        doc.paragraphs.append(Paragraph("B"))
+        doc.paragraphs.append(Paragraph("C"))
+        return doc.paragraphs[0:2]
+
+    def test_append_raises_type_error(self):
+        from navyfox.paragraph import Paragraph
+        s = self._make_slice()
+        with pytest.raises(TypeError, match="read-only"):
+            s.append(Paragraph("X"))
+
+    def test_extend_raises_type_error(self):
+        from navyfox.paragraph import Paragraph
+        s = self._make_slice()
+        with pytest.raises(TypeError, match="read-only"):
+            s.extend([Paragraph("X")])
+
+    def test_insert_raises_type_error(self):
+        from navyfox.paragraph import Paragraph
+        s = self._make_slice()
+        with pytest.raises(TypeError, match="read-only"):
+            s.insert(0, Paragraph("X"))
+
+    def test_remove_raises_type_error(self):
+        from navyfox.paragraph import Paragraph
+        s = self._make_slice()
+        with pytest.raises(TypeError, match="read-only"):
+            s.remove(s[0])
+
+    def test_pop_raises_type_error(self):
+        s = self._make_slice()
+        with pytest.raises(TypeError, match="read-only"):
+            s.pop()
+
+    def test_clear_raises_type_error(self):
+        s = self._make_slice()
+        with pytest.raises(TypeError, match="read-only"):
+            s.clear()
+
+    def test_iadd_raises_type_error(self):
+        from navyfox.paragraph import Paragraph
+        s = self._make_slice()
+        with pytest.raises(TypeError, match="read-only"):
+            s += [Paragraph("X")]
+
+    def test_read_operations_still_work(self):
+        s = self._make_slice()
+        assert len(s) == 2
+        assert s[0].text == "A"
+        assert s[1].text == "B"
+        assert list(s)[0].text == "A"
+
+    def test_empty_document_view_mutations_raise(self):
+        """DocumentView.empty() also returns a _SliceView; its mutations must raise."""
+        from navyfox._collection import DocumentView
+        from navyfox.paragraph import Paragraph
+        empty = DocumentView.empty(Paragraph, "paragraphs")
+        with pytest.raises(TypeError, match="read-only"):
+            empty.append(Paragraph("X"))

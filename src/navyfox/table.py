@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Generator, Iterator
-from typing import Any, Literal, overload, override
+from typing import TYPE_CHECKING, Any, Literal, overload, override
 
 from navyfox._block import BlockContainerMixin
 from navyfox._block import BlockCtx as _BlockCtx
@@ -11,6 +11,10 @@ from navyfox._collection import DocumentView
 from navyfox._proxy.base import Element, ElementState
 from navyfox._proxy.descriptors import BoolProperty, ChoiceProperty, FloatProperty, StringProperty
 from navyfox.paragraph import Paragraph
+
+if TYPE_CHECKING:
+    from navyfox._native.handle import Handle
+    from navyfox.document import Document
 
 
 class Cell(BlockContainerMixin, Element):
@@ -52,7 +56,7 @@ class Cell(BlockContainerMixin, Element):
 
     @override
     def _block_context(self) -> _BlockCtx | None:
-        if not self._is_live:
+        if not self.is_live:
             return None
         self._check_valid()
         handle, doc = self._require_live()
@@ -88,7 +92,7 @@ class Cell(BlockContainerMixin, Element):
         return bool(self.text)
 
     def __len__(self) -> int:
-        if not self._is_live:
+        if not self.is_live:
             return 0
         self._check_valid()
         try:
@@ -97,7 +101,7 @@ class Cell(BlockContainerMixin, Element):
             return 0
 
     def __iter__(self) -> Iterator[Paragraph | Table]:
-        if not self._is_live:
+        if not self.is_live:
             return iter([])
         self._check_valid()
         handle, doc = self._require_live()
@@ -137,7 +141,7 @@ class Row(Element):
 
     @property
     def cells(self) -> DocumentView[Cell]:
-        if not self._is_live:
+        if not self.is_live:
             return DocumentView.empty(Cell, "cells")
         self._check_valid()
         handle, doc = self._require_live()
@@ -166,7 +170,7 @@ class Row(Element):
             return False
 
     def __len__(self) -> int:
-        if self._is_live:
+        if self.is_live:
             self._check_valid()
         try:
             return len(self.cells)
@@ -225,7 +229,7 @@ class Table(Element):
 
     @property
     def rows(self) -> DocumentView[Row]:
-        if not self._is_live:
+        if not self.is_live:
             return DocumentView.empty(Row, "rows")
         self._check_valid()
         handle, doc = self._require_live()
@@ -237,7 +241,7 @@ class Table(Element):
 
     @property
     def cells(self) -> DocumentView[Cell]:
-        if not self._is_live:
+        if not self.is_live:
             return DocumentView.empty(Cell, "cells")
         self._check_valid()
         handle, doc = self._require_live()
@@ -246,7 +250,7 @@ class Table(Element):
     @property
     def data(self) -> Generator[list[str], None, None]:
         """Plain text grid — plug directly into a DataFrame constructor."""
-        if not self._is_live:
+        if not self.is_live:
             yield []
             return
 
@@ -255,18 +259,30 @@ class Table(Element):
 
     def cell(self, row: int, col: int) -> Cell:
         """Return the cell at (row, col)."""
-        if not self._is_live:
+        if not self.is_live:
             raise ValueError("Cannot access cell on a construction-object Table.")
         self._check_valid()
         return self.rows[row].cells[col]
 
-    # ------------------------------------------------------------------
-    # Materialisation
-    # ------------------------------------------------------------------
+    @override
+    def _build_native(
+        self,
+        parent_handle: int,
+        lib: Handle,
+        data: dict[str, Any],
+        document: Document,
+    ) -> int:
+        rows = int(data.get("rows", 1))
+        cols = int(data.get("cols", 1))
+        child_handle = lib.add_table(parent_handle, rows, cols)
+        filtered = {k: v for k, v in data.items() if k not in ("rows", "cols")}
+        if filtered:
+            lib.set_many(child_handle, filtered)
+        return child_handle
 
     @override
     def _copy_data(self) -> dict[str, Any]:
-        if not self._is_live:
+        if not self.is_live:
             return dict(self._data)
         return dict(
             style=self.style,
@@ -297,7 +313,7 @@ class Table(Element):
             return False
 
     def __len__(self) -> int:
-        if self._is_live:
+        if self.is_live:
             self._check_valid()
         try:
             return len(self.rows)

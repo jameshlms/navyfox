@@ -75,8 +75,6 @@ fn native_err(msg: impl Into<String>) -> PyErr {
     PyRuntimeError::new_err(msg.into())
 }
 
-// ── Document lifecycle ────────────────────────────────────────────────────────
-
 #[pyfunction]
 fn create_document() -> PyResult<isize> {
     let h = unsafe { ffi::create_document() };
@@ -124,8 +122,6 @@ fn save_document(handle: isize, path: &str) -> PyResult<()> {
 fn dispose(handle: isize) {
     unsafe { ffi::dispose(handle) }
 }
-
-// ── Generic property access ───────────────────────────────────────────────────
 
 #[pyfunction]
 fn get_int(handle: isize, name: &str) -> i32 {
@@ -219,8 +215,6 @@ fn set_str(handle: isize, name: &str, value: &str) -> PyResult<()> {
     }
 }
 
-// ── Collection operations ─────────────────────────────────────────────────────
-
 #[pyfunction]
 fn get_count(handle: isize, collection: &str) -> PyResult<i32> {
     let enc = collection.as_bytes();
@@ -270,16 +264,22 @@ fn remove_child(handle: isize) -> PyResult<()> {
 
 #[pyfunction]
 fn get_element_type(handle: isize) -> String {
-    let mut buf = [0u8; 64];
-    let mut required: i32 = 0;
-    let n = unsafe { ffi::get_element_type(handle, buf.as_mut_ptr(), 64, &mut required) };
-    if n <= 0 {
-        return "unknown".to_string();
+    let mut buf_size = BUF_INIT;
+    loop {
+        let mut buf = vec![0u8; buf_size as usize];
+        let mut required: i32 = 0;
+        let n = unsafe { ffi::get_element_type(handle, buf.as_mut_ptr(), buf_size, &mut required) };
+        if n <= 0 {
+            if required > buf_size {
+                buf_size = required + 1;
+                continue;
+            }
+            return "unknown".to_string();
+        }
+        buf.truncate(n as usize);
+        return String::from_utf8_lossy(&buf).into_owned();
     }
-    String::from_utf8_lossy(&buf[..n as usize]).into_owned()
 }
-
-// ── Special-case constructors ─────────────────────────────────────────────────
 
 #[pyfunction]
 fn add_table(doc_handle: isize, rows: i32, cols: i32) -> PyResult<isize> {
@@ -341,8 +341,6 @@ fn get_image_data(handle: isize) -> PyResult<Vec<u8>> {
         return Ok(buf);
     }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
 
 #[pymodule]
 fn _navyfox(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {

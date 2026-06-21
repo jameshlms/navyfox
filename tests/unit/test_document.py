@@ -205,7 +205,7 @@ class TestParagraphProxy:
         para = Paragraph("spec text", style="Heading2")
         assert para.text == "spec text"
         assert para.style == "Heading2"
-        assert not para._is_live
+        assert not para.is_live
 
     def test_copy_returns_snapshot(self):
         from navyfox.paragraph import Paragraph
@@ -214,7 +214,7 @@ class TestParagraphProxy:
         para = doc.paragraphs[0]
         snap = para.copy()
         assert isinstance(snap, Paragraph)
-        assert not snap._is_live
+        assert not snap.is_live
         assert snap.text == "snapshot me"
 
     def test_document_closed_raises_on_access(self):
@@ -565,7 +565,7 @@ class TestRunProxy:
         run, _ = self._para_with_run("copy me", bold=True)
         snap = run.copy()
         assert isinstance(snap, Run)
-        assert not snap._is_live
+        assert not snap.is_live
         assert snap.text == "copy me"
         assert snap.bold is True
 
@@ -582,7 +582,7 @@ class TestRunProxy:
         run = Run("spec", bold=True, italic=False)
         assert run.text == "spec"
         assert run.bold is True
-        assert not run._is_live
+        assert not run.is_live
 
 
 # ---------------------------------------------------------------------------
