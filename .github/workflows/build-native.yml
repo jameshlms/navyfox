@@ -51,6 +51,9 @@ jobs:
           -p:InvariantGlobalization=true
           -o publish/${{ matrix.rid }}
 
+      - name: Remove debug symbol files
+        run: find publish/${{ matrix.rid }} -name '*.dbg' -delete
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
