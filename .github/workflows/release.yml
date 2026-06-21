@@ -24,29 +24,21 @@ jobs:
         include:
           - rid: linux-x64
             os: ubuntu-24.04
-            rust_target: x86_64-unknown-linux-gnu
-            manylinux: "2_28"
             lib_name: NavyFox.Native.so
           - rid: linux-arm64
             os: ubuntu-24.04-arm
-            rust_target: aarch64-unknown-linux-gnu
-            manylinux: "2_28"
             lib_name: NavyFox.Native.so
           - rid: win-x64
             os: windows-2022
-            rust_target: x86_64-pc-windows-msvc
             lib_name: NavyFox.Native.dll
           - rid: win-arm64
             os: windows-11-arm
-            rust_target: aarch64-pc-windows-msvc
             lib_name: NavyFox.Native.dll
           - rid: osx-arm64
             os: macos-15
-            rust_target: aarch64-apple-darwin
             lib_name: NavyFox.Native.dylib
           - rid: osx-x64
             os: macos-15
-            rust_target: x86_64-apple-darwin
             lib_name: NavyFox.Native.dylib
 
     steps:
@@ -63,42 +55,25 @@ jobs:
         run: find src/navyfox/_libs -name '.gitkeep' -delete
 
       - name: Setup Python
-        if: runner.os != 'Linux'
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
       - name: Build wheel
-        uses: PyO3/maturin-action@v1
-        with:
-          target: ${{ matrix.rust_target }}
-          manylinux: ${{ matrix.manylinux || 'off' }}
-          args: --release --out dist --find-interpreter
-
-      - name: Bundle dylib with delocate (macOS)
-        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          NAVYFOX_RID: ${{ matrix.rid }}
         run: |
-          pip install delocate
-          delocate-wheel -w dist/repaired/ -v dist/*.whl
-          rm dist/*.whl
-          mv dist/repaired/*.whl dist/
+          pip install build hatchling
+          python -m build --wheel --no-isolation
 
-      - name: Bundle DLL with delvewheel (Windows)
-        if: runner.os == 'Windows'
+      - name: Smoke-test wheel
         shell: bash
         run: |
-          pip install delvewheel
-          delvewheel repair --add-path "src/navyfox/_libs/${{ matrix.rid }}/" dist/*.whl -w dist/repaired/
-          rm dist/*.whl
-          mv dist/repaired/*.whl dist/
+          pip install --no-index --find-links=dist navyfox
+          python -c "import navyfox; navyfox.Document(); print('smoke: OK')"
 
-      - name: Smoke-test wheel (bare runner)
-        if: runner.os == 'Linux'
-        run: |
-          python3 -m pip install -q --no-index --find-links=dist navyfox
-          python3 -c "import navyfox; navyfox.Document(); print('bare: OK')"
-
-      - name: Smoke-test wheel (Docker)
+      - name: Smoke-test wheel (Docker, Linux only)
         if: runner.os == 'Linux'
         run: |
           docker run --rm \
@@ -140,11 +115,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build sdist
-        uses: PyO3/maturin-action@v1
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          command: sdist
-          args: --out dist
+          python-version: "3.12"
+
+      - name: Build sdist
+        run: |
+          pip install build hatchling
+          python -m build --sdist --no-isolation
 
       - name: Upload sdist to GitHub Release
         uses: softprops/action-gh-release@v2

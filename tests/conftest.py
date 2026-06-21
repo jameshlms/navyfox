@@ -1,6 +1,3 @@
-import sys
-from unittest.mock import MagicMock
-
-# Provide a stub for the compiled Rust extension so the navyfox package can be
-# imported without the native binary present (unit tests mock get_handle anyway).
-sys.modules.setdefault("navyfox._navyfox", MagicMock())
+# navyfox._navyfox no longer exists (ctypes replaced the PyO3 extension).
+# The native library loads lazily in _native/handle.py, so no stub is needed
+# for unit tests — they patch get_handle() directly before any document is created.

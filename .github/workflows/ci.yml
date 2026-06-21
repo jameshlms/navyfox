@@ -63,7 +63,7 @@ jobs:
       - name: Install dev dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install "mypy>=1.11" "ruff>=0.6" "pytest>=8" "pytest-cov>=5" "python-docx>=1.1" "maturin>=1.0" "twine>=5"
+          pip install "mypy>=1.11" "ruff>=0.6" "pytest>=8" "pytest-cov>=5" "python-docx>=1.1" "twine>=5"
 
       - name: ruff check
         run: ruff check src/navyfox tests

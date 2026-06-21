@@ -1,6 +1,6 @@
 [build-system]
-requires = ["maturin>=1.0,<2.0"]
-build-backend = "maturin"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "navyfox"
@@ -31,13 +31,20 @@ dev = [
     "pytest>=8",
     "pytest-cov>=5",
     "python-docx>=1.1",
-    "maturin>=1.0",
+    "hatchling",
+    "build",
     "twine>=5",
 ]
 
-[tool.maturin]
-python-source = "src"
-module-name = "navyfox._navyfox"
+[tool.hatch.build.targets.wheel]
+packages = ["src/navyfox"]
+exclude = [
+    "src/navyfox/_libs/**/*.dbg",
+    "src/navyfox/_libs/**/.gitkeep",
+]
+
+[tool.hatch.build.hooks.custom]
+path = "hatch_build.py"
 
 [tool.mypy]
 strict = true
