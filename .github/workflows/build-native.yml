@@ -51,6 +51,9 @@ jobs:
           -p:InvariantGlobalization=true
           -o publish/${{ matrix.rid }}
 
+      - name: Fix ELF executable segment (workaround for .NET AOT linux-x64 linker bug)
+        run: python3 scripts/fix_elf_exec.py publish/${{ matrix.rid }}/NavyFox.Native.so
+
       - name: Remove debug symbol files
         run: find publish/${{ matrix.rid }} -name '*.dbg' -delete
 
