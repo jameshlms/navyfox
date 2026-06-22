@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "navyfox"
-version = "0.1.3"
+version = "0.1.8"
 description = "Deep DOCX manipulation via a C# Native AOT shared library"
 readme = "README.md"
 license = { text = "MIT" }
