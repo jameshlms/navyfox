@@ -738,7 +738,6 @@ class TestSliceViewReadOnly:
             s.insert(0, Paragraph("X"))
 
     def test_remove_raises_type_error(self):
-        from navyfox.paragraph import Paragraph
         s = self._make_slice()
         with pytest.raises(TypeError, match="read-only"):
             s.remove(s[0])
