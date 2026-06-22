@@ -44,6 +44,7 @@ TestResults/
 
 # Benchmark artifacts
 scripts/benchmark_results.json
+scripts/benchmark_results.csv
 
 # Scratch / test output
 artifacts/
