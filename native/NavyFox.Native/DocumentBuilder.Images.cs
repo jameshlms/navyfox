@@ -102,11 +102,11 @@ internal static unsafe partial class DocumentBuilder
             using (var stream = imagePart.GetStream())
                 stream.CopyTo(ms);
 
-            var bytes = ms.ToArray();
-            *required = bytes.Length;
-            if (bytes.Length > bufLen) return 0;
-            bytes.AsSpan().CopyTo(new Span<byte>(buf, bytes.Length));
-            return bytes.Length;
+            var length = (int)ms.Length;
+            *required = length;
+            if (length > bufLen) return 0;
+            ms.GetBuffer().AsSpan(0, length).CopyTo(new Span<byte>(buf, length));
+            return length;
         }
         catch { return -1; }
     }
@@ -241,17 +241,18 @@ internal static unsafe partial class DocumentBuilder
         return inline;
     }
 
-    private static PartTypeInfo ContentTypeToImagePartType(string contentType) =>
-        contentType.ToLowerInvariant() switch
-        {
-            "image/jpeg" or "image/jpg" => ImagePartType.Jpeg,
-            "image/gif"                 => ImagePartType.Gif,
-            "image/bmp"                 => ImagePartType.Bmp,
-            "image/tiff" or "image/tif" => ImagePartType.Tiff,
-            "image/x-emf"               => ImagePartType.Emf,
-            "image/x-wmf"               => ImagePartType.Wmf,
-            _                           => ImagePartType.Png
-        };
+    private static PartTypeInfo ContentTypeToImagePartType(string ct)
+    {
+        if (ct.Equals("image/jpeg", StringComparison.OrdinalIgnoreCase) ||
+            ct.Equals("image/jpg",  StringComparison.OrdinalIgnoreCase)) return ImagePartType.Jpeg;
+        if (ct.Equals("image/gif",  StringComparison.OrdinalIgnoreCase)) return ImagePartType.Gif;
+        if (ct.Equals("image/bmp",  StringComparison.OrdinalIgnoreCase)) return ImagePartType.Bmp;
+        if (ct.Equals("image/tiff", StringComparison.OrdinalIgnoreCase) ||
+            ct.Equals("image/tif",  StringComparison.OrdinalIgnoreCase)) return ImagePartType.Tiff;
+        if (ct.Equals("image/x-emf", StringComparison.OrdinalIgnoreCase)) return ImagePartType.Emf;
+        if (ct.Equals("image/x-wmf", StringComparison.OrdinalIgnoreCase)) return ImagePartType.Wmf;
+        return ImagePartType.Png;
+    }
 
     // -----------------------------------------------------------------------
     // Natural-size detection from image headers (PNG and JPEG)

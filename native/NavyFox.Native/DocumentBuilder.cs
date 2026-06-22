@@ -97,6 +97,9 @@ internal static unsafe partial class DocumentBuilder
     // Unified element registry
     private static readonly ConcurrentDictionary<nint, ElemWrapper> SElements = new();
 
+    // Per-document child handle sets — enables O(children) Dispose instead of O(all elements)
+    private static readonly ConcurrentDictionary<nint, ConcurrentBag<nint>> SDocumentChildren = new();
+
     // Reverse maps for stable handles (OpenXml object → handle integer)
     private static readonly ConcurrentDictionary<Paragraph, nint> SParagraphHandles = new();
     private static readonly ConcurrentDictionary<Run, nint> SRunHandles = new();
@@ -117,12 +120,11 @@ internal static unsafe partial class DocumentBuilder
 
     private static int WriteStr(string s, byte* buf, int bufLen, int* required)
     {
-        var bytes = Encoding.UTF8.GetBytes(s);
-        *required = bytes.Length;
-        if (bytes.Length == 0) return 0;
-        if (bytes.Length > bufLen) return 0;
-        bytes.AsSpan().CopyTo(new Span<byte>(buf, bytes.Length));
-        return bytes.Length;
+        var byteCount = Encoding.UTF8.GetByteCount(s);
+        *required = byteCount;
+        if (byteCount == 0) return 0;
+        if (byteCount > bufLen) return 0;
+        return Encoding.UTF8.GetBytes(s, new Span<byte>(buf, byteCount));
     }
 
     // --- Body helper ---
@@ -131,80 +133,101 @@ internal static unsafe partial class DocumentBuilder
         d.State.Document.MainDocumentPart!.Document!.Body!;
 
     // --- Handle factory methods (lazy, stable) ---
+    // Pattern: pre-allocate in SElements, then race to claim the reverse-map slot via GetOrAdd.
+    // The loser cleans up its own SElements entry; only the winner registers in SDocumentChildren.
+
+    private static void TrackChild(nint docHandle, nint childHandle) =>
+        SDocumentChildren.GetOrAdd(docHandle, static _ => new ConcurrentBag<nint>()).Add(childHandle);
 
     private static nint GetOrCreateParagraphHandle(Paragraph para, nint docHandle)
     {
         if (SParagraphHandles.TryGetValue(para, out var h)) return h;
-        h = NextHandle();
-        SParagraphHandles[para] = h;
-        SElements[h] = new ParaElem(para, docHandle);
-        return h;
+        var newH = NextHandle();
+        SElements[newH] = new ParaElem(para, docHandle);
+        var winner = SParagraphHandles.GetOrAdd(para, newH);
+        if (winner != newH) { SElements.TryRemove(newH, out _); return winner; }
+        TrackChild(docHandle, newH);
+        return newH;
     }
 
     private static nint GetOrCreateRunHandle(Run run, nint docHandle)
     {
         if (SRunHandles.TryGetValue(run, out var h)) return h;
-        h = NextHandle();
-        SRunHandles[run] = h;
-        SElements[h] = new RunElem(run, docHandle);
-        return h;
+        var newH = NextHandle();
+        SElements[newH] = new RunElem(run, docHandle);
+        var winner = SRunHandles.GetOrAdd(run, newH);
+        if (winner != newH) { SElements.TryRemove(newH, out _); return winner; }
+        TrackChild(docHandle, newH);
+        return newH;
     }
 
     private static nint GetOrCreateTableHandle(
         Table table, TableCell[,] cells, int rows, int cols, nint docHandle)
     {
         if (STableHandles.TryGetValue(table, out var h)) return h;
-        h = NextHandle();
-        STableHandles[table] = h;
-        SElements[h] = new TableElem(table, cells, rows, cols, docHandle);
-        return h;
+        var newH = NextHandle();
+        SElements[newH] = new TableElem(table, cells, rows, cols, docHandle);
+        var winner = STableHandles.GetOrAdd(table, newH);
+        if (winner != newH) { SElements.TryRemove(newH, out _); return winner; }
+        TrackChild(docHandle, newH);
+        return newH;
     }
 
     private static nint GetOrCreateRowHandle(
         TableRow row, int rowIdx, nint tableHandle, nint docHandle)
     {
         if (SRowHandles.TryGetValue(row, out var h)) return h;
-        h = NextHandle();
-        SRowHandles[row] = h;
-        SElements[h] = new RowElem(row, rowIdx, tableHandle, docHandle);
-        return h;
+        var newH = NextHandle();
+        SElements[newH] = new RowElem(row, rowIdx, tableHandle, docHandle);
+        var winner = SRowHandles.GetOrAdd(row, newH);
+        if (winner != newH) { SElements.TryRemove(newH, out _); return winner; }
+        TrackChild(docHandle, newH);
+        return newH;
     }
 
     private static nint GetOrCreateCellHandle(
         TableCell cell, int rowIdx, int colIdx, nint rowHandle, nint docHandle)
     {
         if (SCellHandles.TryGetValue(cell, out var h)) return h;
-        h = NextHandle();
-        SCellHandles[cell] = h;
-        SElements[h] = new CellElem(cell, rowIdx, colIdx, rowHandle, docHandle);
-        return h;
+        var newH = NextHandle();
+        SElements[newH] = new CellElem(cell, rowIdx, colIdx, rowHandle, docHandle);
+        var winner = SCellHandles.GetOrAdd(cell, newH);
+        if (winner != newH) { SElements.TryRemove(newH, out _); return winner; }
+        TrackChild(docHandle, newH);
+        return newH;
     }
 
     private static nint GetOrCreateImageHandle(Run run, string relId, nint docHandle)
     {
         if (SImageHandles.TryGetValue(run, out var h)) return h;
-        h = NextHandle();
-        SImageHandles[run] = h;
-        SElements[h] = new ImageElem(run, relId, docHandle);
-        return h;
+        var newH = NextHandle();
+        SElements[newH] = new ImageElem(run, relId, docHandle);
+        var winner = SImageHandles.GetOrAdd(run, newH);
+        if (winner != newH) { SElements.TryRemove(newH, out _); return winner; }
+        TrackChild(docHandle, newH);
+        return newH;
     }
 
     private static nint GetOrCreateStyleHandle(Style style, nint docHandle)
     {
         if (SStyleHandles.TryGetValue(style, out var h)) return h;
-        h = NextHandle();
-        SStyleHandles[style] = h;
-        SElements[h] = new StyleElem(style, docHandle);
-        return h;
+        var newH = NextHandle();
+        SElements[newH] = new StyleElem(style, docHandle);
+        var winner = SStyleHandles.GetOrAdd(style, newH);
+        if (winner != newH) { SElements.TryRemove(newH, out _); return winner; }
+        TrackChild(docHandle, newH);
+        return newH;
     }
 
     private static nint GetOrCreateSectHandle(SectionProperties sp, nint docHandle)
     {
         if (SSectHandles.TryGetValue(sp, out var h)) return h;
-        h = NextHandle();
-        SSectHandles[sp] = h;
-        SElements[h] = new SectElem(sp, docHandle);
-        return h;
+        var newH = NextHandle();
+        SElements[newH] = new SectElem(sp, docHandle);
+        var winner = SSectHandles.GetOrAdd(sp, newH);
+        if (winner != newH) { SElements.TryRemove(newH, out _); return winner; }
+        TrackChild(docHandle, newH);
+        return newH;
     }
 
     private static void AppendToBody(Body body, OpenXmlElement element)
@@ -222,14 +245,13 @@ internal static unsafe partial class DocumentBuilder
     private static int GetOoxmlBool(OpenXmlElement? elem)
     {
         if (elem is null) return -1;
+        // Fast path: Bold, Italic, Strike, etc. all inherit OnOffType and expose Val directly.
+        if (elem is OnOffType oo)
+            return oo.Val is null ? 1 : ((bool)oo.Val ? 1 : 0);
         foreach (var attr in elem.GetAttributes())
         {
             if (attr.LocalName == "val")
-            {
-                return string.Equals(attr.Value, "false", StringComparison.OrdinalIgnoreCase)
-                    || attr.Value == "0"
-                    ? 0 : 1;
-            }
+                return string.Equals(attr.Value, "false", StringComparison.OrdinalIgnoreCase) || attr.Value == "0" ? 0 : 1;
         }
         return 1; // element present, no val → true
     }

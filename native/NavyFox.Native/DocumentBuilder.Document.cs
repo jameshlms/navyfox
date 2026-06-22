@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
@@ -22,6 +23,7 @@ internal static unsafe partial class DocumentBuilder
 
             var h = NextHandle();
             SElements[h] = new DocElem(new DocumentState(wp, stream));
+            SDocumentChildren[h] = new ConcurrentBag<nint>();
             return h;
         }
         catch
@@ -44,6 +46,7 @@ internal static unsafe partial class DocumentBuilder
 
             var h = NextHandle();
             SElements[h] = new DocElem(new DocumentState(wp, stream));
+            SDocumentChildren[h] = new ConcurrentBag<nint>();
             return h;
         }
         catch
@@ -97,12 +100,11 @@ internal static unsafe partial class DocumentBuilder
         if (!SElements.TryRemove(handle, out var elem) || elem is not DocElem d)
             return;
 
-        // Remove every child element registered under this document handle.
-        foreach (var kvp in SElements.ToArray())
+        if (SDocumentChildren.TryRemove(handle, out var children))
         {
-            if (kvp.Value.DocHandle == handle)
+            foreach (var childHandle in children)
             {
-                if (SElements.TryRemove(kvp.Key, out var child))
+                if (SElements.TryRemove(childHandle, out var child))
                     RemoveReverseMapEntry(child);
             }
         }
