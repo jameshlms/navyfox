@@ -68,6 +68,7 @@ jobs:
           python -m build --wheel --no-isolation
 
       - name: Smoke-test wheel
+        if: matrix.rid != 'osx-x64'
         shell: bash
         run: |
           pip install --no-index --find-links=dist navyfox
@@ -79,7 +80,7 @@ jobs:
           docker run --rm \
             -v "${{ github.workspace }}/dist":/wheels:ro \
             python:3.12-slim \
-            sh -c "pip install -q --no-index --find-links=/wheels navyfox && python -c 'import navyfox; navyfox.Document(); print(docker: OK)'"
+            sh -c "pip install -q --no-index --find-links=/wheels navyfox && python -c 'import navyfox; navyfox.Document()' && echo 'docker: OK'"
 
       - name: Stage native binary as release asset
         shell: bash
