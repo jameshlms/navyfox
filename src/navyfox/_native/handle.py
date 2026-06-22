@@ -41,9 +41,12 @@ def _load_native() -> ctypes.CDLL:
             f"  dotnet publish native/NavyFox.Native -r {rid} -c Release"
         )
     if platform.system() == "Windows":
-        # Add the lib directory to the DLL search path so any CRT DLLs
-        # co-located with NavyFox.Native.dll are found by the loader.
+        # Add the lib dir and the delvewheel-managed .libs dir to the DLL
+        # search path so bundled CRT dependencies are found by the loader.
         os.add_dll_directory(str(lib_path.parent))  # type: ignore[attr-defined]
+        libs_dir = lib_path.parent.parent.parent / ".libs"
+        if libs_dir.exists():
+            os.add_dll_directory(str(libs_dir))  # type: ignore[attr-defined]
     lib = ctypes.CDLL(str(lib_path))
     _configure(lib)
     return lib

@@ -67,6 +67,15 @@ jobs:
           pip install build hatchling
           python -m build --wheel --no-isolation
 
+      - name: Bundle DLL dependencies with delvewheel (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          pip install delvewheel
+          delvewheel repair dist/*.whl -w dist/repaired/
+          rm dist/*.whl
+          mv dist/repaired/*.whl dist/
+
       - name: Smoke-test wheel
         if: matrix.rid != 'osx-x64'
         shell: bash
