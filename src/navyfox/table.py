@@ -10,6 +10,7 @@ from navyfox._block import BlockCtx as _BlockCtx
 from navyfox._collection import DocumentView
 from navyfox._proxy.base import Element, ElementState
 from navyfox._proxy.descriptors import BoolProperty, ChoiceProperty, FloatProperty, StringProperty
+from navyfox.formats import Border, CellBorder, TableBorder, coerce_border_group
 from navyfox.paragraph import Paragraph
 
 if TYPE_CHECKING:
@@ -50,6 +51,15 @@ class Cell(BlockContainerMixin, Element):
     )
     merge_up = StringProperty("merge_up", default="")  # "restart" | "continue" | ""
     merge_left = StringProperty("merge_left", default="")
+
+    @property
+    def border(self) -> CellBorder:
+        return self._get_data().setdefault("border", CellBorder())
+
+    @border.setter
+    def border(self, value: CellBorder | dict[str, Border | dict[str, object]]) -> None:
+        value = coerce_border_group(value, CellBorder)
+        self._get_data()["border"] = value
 
     def __init__(self) -> None:
         super().__init__()
@@ -210,17 +220,29 @@ class Table(Element):
     indent = FloatProperty("indent", default=0.0)  # left indent, inches
     cell_spacing = FloatProperty("cell_spacing", default=0.0)  # points
 
+    @property
+    def border(self) -> TableBorder:
+        return self._get_data().setdefault("border", TableBorder())
+
+    @border.setter
+    def border(self, value: TableBorder | dict[str, Border | dict[str, object]]) -> None:
+        value = coerce_border_group(value, TableBorder)
+        self._get_data()["border"] = value
+
     def __init__(
         self,
         rows: int,
         cols: int,
         *,
         style: str = "TableGrid",
+        border: TableBorder | dict[str, Border | dict[str, object]] | None = None,
     ) -> None:
         super().__init__()
         data: dict[str, Any] = {"rows": rows, "cols": cols}
         if style != "TableGrid":
             data["style"] = style
+        if border is not None:
+            data["border"] = coerce_border_group(border, TableBorder)
         self._data = data
 
     # ------------------------------------------------------------------
@@ -275,7 +297,7 @@ class Table(Element):
         rows = int(data.get("rows", 1))
         cols = int(data.get("cols", 1))
         child_handle = lib.add_table(parent_handle, rows, cols)
-        filtered = {k: v for k, v in data.items() if k not in ("rows", "cols")}
+        filtered = {k: v for k, v in data.items() if k not in ("rows", "cols", "border")}
         if filtered:
             lib.set_many(child_handle, filtered)
         return child_handle
