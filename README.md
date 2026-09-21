@@ -404,6 +404,166 @@ with Document() as doc:
 
 ---
 
+## Construction syntax
+
+Every element type in NavyFox has two modes:
+
+- **Construction state** — created without a document; all data is stored in Python. Use this to build up elements before appending them, or to pass elements between documents.
+- **Live proxy** — returned after an element is appended to a document; every property access crosses the FFI boundary into C#.
+
+The `add_*` helpers (e.g. `doc.add_paragraph()`) are shorthand that create a construction object and append it in one call, returning the live proxy.
+
+### Two ways to build the same paragraph
+
+```python
+from navyfox import Document, Paragraph, Run
+
+with Document() as doc:
+    # — Shorthand (most common) —
+    p = doc.add_paragraph()
+    p.add_run("Normal, ").bold = False
+    p.add_run("bold, ").bold = True
+    p.add_run("italic.").italic = True
+
+    # — Construction-then-append —
+    para = Paragraph(style="Normal")
+    para.runs.append(Run("Normal, "))
+    para.runs.append(Run("bold, ", bold=True))
+    para.runs.append(Run("italic.", italic=True))
+    doc.paragraphs.append(para)   # becomes live on append
+
+    doc.save("output.docx")
+```
+
+### Constructing elements with keyword arguments
+
+`Paragraph`, `Run`, and `HorizontalRule` all accept their properties directly in `__init__`:
+
+```python
+from navyfox import Paragraph, Run, HorizontalRule
+
+# Paragraph with style and spacing
+para = Paragraph(
+    "Key takeaway",
+    style="Heading2",
+    alignment="center",
+    space_before=6.0,   # points
+    space_after=6.0,
+)
+
+# Run with character formatting
+run = Run(
+    "Important",
+    bold=True,
+    italic=True,
+    font_name="Arial",
+    font_size=14,
+    color="#CC0000",
+)
+
+# Horizontal rule with a custom style
+rule = HorizontalRule(line_style="double", line_width=1.5, line_color="#333333")
+```
+
+Paragraph borders can be set on construction or edited after a paragraph is
+attached to a document. Each side supports `style`, `width` (points), `color`,
+`spacing` (points), and `shadow`:
+
+```python
+from navyfox import Border, Paragraph, ParagraphBorder
+
+para = Paragraph(
+    "Notice",
+    border=ParagraphBorder(
+        bottom=Border(style="double", width=1.5, color="4472C4", spacing=2)
+    ),
+)
+para.border.top.style = "dotted"
+
+# A partial dictionary is also accepted.
+para.border = {"bottom": {"style": "double", "width": 1.5}}
+
+Tables and cells use their corresponding border groupings, while images have
+a single outline:
+
+```python
+from navyfox import CellBorder, ImageOutline, TableBorder
+
+table = Table(2, 2, border=TableBorder(
+    inside_horizontal=Border(style="single", width=0.5),
+))
+table.cell(0, 0).border = CellBorder(left=Border(style="double"))
+image.outline = ImageOutline(style="single", width=1.5)
+```
+```
+
+### Fluent chaining
+
+All setters on `Run` and `Paragraph` return `self`, so you can chain calls:
+
+```python
+from navyfox import Document
+
+with Document() as doc:
+    # Run method chaining
+    run = doc.add_paragraph().add_run("Important")
+    run.set_bold().set_italic().set_color("#CC0000").set_font("Arial", 14)
+
+    # Paragraph.format() batches multiple properties in one FFI call
+    p = doc.add_paragraph("Note")
+    p.format(alignment="center", space_before=6.0, space_after=6.0)
+
+    # Run.format() does the same for character formatting
+    r = doc.add_paragraph().add_run("Warning")
+    r.format(bold=True, color="#FF0000", font_size=12)
+
+    doc.save("output.docx")
+```
+
+### Batch append
+
+`doc.paragraphs.extend()` or `+=` appends multiple elements in one pass:
+
+```python
+from navyfox import Document, Paragraph, Run
+
+items = ["First point", "Second point", "Third point"]
+
+with Document() as doc:
+    doc.paragraphs.extend(
+        Paragraph(text, list_style="bullet") for text in items
+    )
+    doc.save("output.docx")
+```
+
+### Lists
+
+```python
+from navyfox import Document
+
+with Document() as doc:
+    doc.add_bullet("Unordered item")
+    doc.add_bullet("Nested item", level=1)
+    doc.add_numbered("First step")
+    doc.add_numbered("Second step")
+    doc.save("output.docx")
+```
+
+### In-place editing with `Document.edit()`
+
+`Document.edit()` is like `Document.open()` but automatically saves back to the source path when the context manager exits:
+
+```python
+from navyfox import Document
+
+with Document.edit("existing.docx") as doc:
+    doc.paragraphs[0].text = "Updated heading"
+    doc.add_paragraph("New paragraph appended.")
+# saved automatically — no explicit doc.save() needed
+```
+
+---
+
 ## API reference
 
 ### `Document`

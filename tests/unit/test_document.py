@@ -381,6 +381,41 @@ class TestParagraphIndentation:
         assert abs(data["indent_hanging"] - 0.0) < 1e-9
 
 
+class TestParagraphBorders:
+    def test_construction_and_mutation(self):
+        from navyfox import Border, Paragraph, ParagraphBorder
+
+        para = Paragraph(
+            "x",
+            border=ParagraphBorder(bottom=Border(style="double", width=1.5)),
+        )
+        para.border.top.style = "dotted"
+        assert para.border.bottom.style == "double"
+        assert para.border.bottom.width == 1.5
+        assert para.border.top.style == "dotted"
+
+    def test_borders_preserved_in_snapshot(self):
+        from navyfox import Border, Paragraph, ParagraphBorder
+
+        para = Paragraph(
+            "x",
+            border=ParagraphBorder(bottom=Border(style="single", color="4472C4")),
+        )
+        snapshot = para.copy()
+        snapshot.border.bottom.style = "dashed"
+        assert para.border.bottom.style == "single"
+        assert snapshot.border.bottom.style == "dashed"
+
+    def test_dict_border_configuration(self):
+        from navyfox import Border, Paragraph
+
+        para = Paragraph("x", border={"bottom": {"style": "double", "width": 1.5}})
+        assert para.border.bottom == Border(style="double", width=1.5)
+
+        para.border = {"top": Border(style="dotted")}
+        assert para.border.top.style == "dotted"
+
+
 # ---------------------------------------------------------------------------
 # Construction-state runs — text derived from runs, mutable before append
 # ---------------------------------------------------------------------------

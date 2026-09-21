@@ -5,6 +5,9 @@ from typing import Any, ClassVar, Literal, Self
 
 from navyfox._collection import DocumentView as DocumentView
 from navyfox._proxy.base import Element as _Element
+from navyfox.formats import Border as Border
+from navyfox.formats import ParagraphBorder as ParagraphBorder
+from navyfox.formats import ParagraphBorders as ParagraphBorders
 from navyfox.hyperlink import Hyperlink as Hyperlink
 from navyfox.image import Image as Image
 from navyfox.run import Run as Run
@@ -34,6 +37,7 @@ class Paragraph(_Element):
     @list_style.setter
     def list_style(self, value: Literal["bullet", "number"] | None) -> None: ...
     list_level: int
+    border: ParagraphBorder
     def __init__(
         self,
         *runs: str | Run,
@@ -50,6 +54,8 @@ class Paragraph(_Element):
         indent_hanging: float = ...,
         list_style: Literal["bullet", "number"] | None = None,
         list_level: int = 0,
+        borders: ParagraphBorders | dict[str, Border | dict[str, object]] | None = None,
+        border: ParagraphBorder | dict[str, Border | dict[str, object]] | None = None,
     ) -> None: ...
     @property
     def runs(self) -> DocumentView[Run]: ...
@@ -85,6 +91,8 @@ class Paragraph(_Element):
         indent_hanging: float = ...,
         list_style: Literal["bullet", "number"] = ...,
         list_level: int = ...,
+        borders: ParagraphBorders | dict[str, Border | dict[str, object]] | None = None,
+        border: ParagraphBorder | dict[str, Border | dict[str, object]] | None = None,
     ) -> Self: ...
     def add_break(self) -> Self: ...
     def align(self, alignment: Literal["left", "right", "center", "justify"]) -> Self: ...
