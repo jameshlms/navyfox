@@ -1,15 +1,11 @@
-"""Generate performance comparison charts from benchmark_results.json.
+"""Generate performance comparison charts from benchmark_results.csv.
 
-Reads scripts/benchmark_results.json (produced by scripts/benchmark.py)
-and writes four PNGs to docs/assets/:
+Reads scripts/benchmark_results.csv (produced by scripts/benchmark.py)
+and writes PNGs to docs/assets/:
 
   perf_write_time.png  — build + save time, NavyFox vs python-docx
   perf_read_time.png   — open + iterate time, NavyFox vs python-docx
   perf_size.png        — installed package size comparison
-
-Error bars are shown when benchmark_results.json contains stdev data
-(produced by the current benchmark.py). Older result files without stdev
-are loaded without error bars.
 
 Usage:
     python scripts/generate_charts.py
@@ -17,15 +13,17 @@ Usage:
 
 from __future__ import annotations
 
+import collections
+import csv
 import importlib.util
-import json
 import os
+import statistics
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
 
-RESULTS_PATH = os.path.join(os.path.dirname(__file__), "benchmark_results.json")
+RESULTS_PATH = os.path.join(os.path.dirname(__file__), "benchmark_results.csv")
 OUT_DIR = os.path.join(os.path.dirname(__file__), "..", "docs", "assets")
 
 NAVY_COLOR   = "#0C2340"   # NavyFox navy
@@ -34,27 +32,29 @@ GRID_STYLE   = {"linestyle": "--", "alpha": 0.4}
 ERR_KW       = {"ecolor": "#555555", "capsize": 3, "capthick": 1, "elinewidth": 1}
 
 
-def _extract(entry: dict | float) -> tuple[float, float]:
-    """Return (mean_ms, stdev_ms) from a JSON entry, handling both formats."""
-    if isinstance(entry, dict):
-        return entry["mean"] * 1000, entry.get("stdev", 0.0) * 1000
-    return entry * 1000, 0.0
-
-
 def _load_results() -> tuple[
     list[int],
     list[float], list[float], list[float], list[float],
     list[float], list[float], list[float], list[float],
 ]:
-    with open(RESULTS_PATH) as f:
-        data = json.load(f)
+    raw: dict[tuple[str, str, int], list[float]] = collections.defaultdict(list)
+    with open(RESULTS_PATH, newline="") as f:
+        for row in csv.DictReader(f):
+            key = (row["operation"], row["library"], int(row["n"]))
+            raw[key].append(float(row["elapsed_s"]))
 
-    sizes = sorted(int(k) for k in data["write"]["python_docx"])
+    def _stats(operation: str, library: str, n: int) -> tuple[float, float]:
+        times = raw[(operation, library, n)]
+        mean_ms = statistics.mean(times) * 1000
+        stdev_ms = (statistics.stdev(times) if len(times) > 1 else 0.0) * 1000
+        return mean_ms, stdev_ms
 
-    write_docx_m, write_docx_e = zip(*[_extract(data["write"]["python_docx"][str(s)]) for s in sizes])
-    write_navy_m, write_navy_e = zip(*[_extract(data["write"]["navyfox"][str(s)])      for s in sizes])
-    read_docx_m,  read_docx_e  = zip(*[_extract(data["read"]["python_docx"][str(s)])   for s in sizes])
-    read_navy_m,  read_navy_e  = zip(*[_extract(data["read"]["navyfox"][str(s)])        for s in sizes])
+    sizes = sorted(set(k[2] for k in raw if k[0] == "write_mixed"))
+
+    write_docx_m, write_docx_e = zip(*[_stats("write_mixed", "python_docx", s) for s in sizes])
+    write_navy_m, write_navy_e = zip(*[_stats("write_mixed", "navyfox",     s) for s in sizes])
+    read_docx_m,  read_docx_e  = zip(*[_stats("read_mixed",  "python_docx", s) for s in sizes])
+    read_navy_m,  read_navy_e  = zip(*[_stats("read_mixed",  "navyfox",     s) for s in sizes])
 
     return (
         sizes,

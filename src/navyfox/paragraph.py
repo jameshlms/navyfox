@@ -84,8 +84,7 @@ class Paragraph(Element):
 
     def __init__(
         self,
-        text: str | Run | list[str | Run] | None = None,
-        *,
+        *runs: str | Run,
         style: str = "Normal",
         alignment: Literal["left", "right", "center", "justify"] | None = None,
         keep_together: bool = False,
@@ -104,14 +103,8 @@ class Paragraph(Element):
 
         super().__init__()
         data: dict[str, Any] = {}
-        if isinstance(text, str):
-            if text:
-                data["runs"] = [Run(text)]
-        elif isinstance(text, Run):
-            data["runs"] = [text]
-        else:
-            if text:
-                data["runs"] = [Run(t) if isinstance(t, str) else t for t in text]
+        if runs:
+            data["runs"] = [Run(r) if isinstance(r, str) else r for r in runs]
         if style and style != "Normal":
             data["style"] = style
         if alignment is not None:

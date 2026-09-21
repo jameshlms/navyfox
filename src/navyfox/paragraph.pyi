@@ -36,8 +36,7 @@ class Paragraph(_Element):
     list_level: int
     def __init__(
         self,
-        text: str | Run | list[str | Run] | None = None,
-        *,
+        *runs: str | Run,
         style: str = "Normal",
         alignment: Literal["left", "right", "center", "justify"] | None = None,
         keep_together: bool = False,
