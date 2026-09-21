@@ -4,10 +4,12 @@ from typing import Any, Literal, overload
 
 from navyfox._collection import DocumentView as DocumentView
 from navyfox._proxy.base import Element as _Element
+from navyfox.formats import Border, CellBorder, TableBorder
 from navyfox.image import Image
 from navyfox.paragraph import HorizontalRule, LineStyleArg, Paragraph
 
 class Cell(_Element):
+    border: CellBorder | dict[str, Border | dict[str, object]]
     text: str
     width: float
     vertical_alignment: Literal["top", "center", "bottom"]
@@ -66,6 +68,7 @@ class Row(_Element):
     def __getitem__(self, index: int) -> Cell: ...
 
 class Table(_Element):
+    border: TableBorder | dict[str, Border | dict[str, object]]
     style: str
     alignment: Literal["left", "center", "right"] | None
     width: float
@@ -78,6 +81,7 @@ class Table(_Element):
         cols: int,
         *,
         style: str = ...,
+        border: TableBorder | dict[str, Border | dict[str, object]] | None = None,
     ) -> None: ...
     @property
     def rows(self) -> DocumentView[Row]: ...

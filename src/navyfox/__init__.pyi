@@ -20,6 +20,9 @@ from navyfox.formats import (
     Border as Border,
 )
 from navyfox.formats import (
+    CellBorder as CellBorder,
+)
+from navyfox.formats import (
     CellBorders as CellBorders,
 )
 from navyfox.formats import (
@@ -29,6 +32,9 @@ from navyfox.formats import (
     ColumnFormat as ColumnFormat,
 )
 from navyfox.formats import (
+    ImageOutline as ImageOutline,
+)
+from navyfox.formats import (
     IndentFormat as IndentFormat,
 )
 from navyfox.formats import (
@@ -36,6 +42,9 @@ from navyfox.formats import (
 )
 from navyfox.formats import (
     PageMargins as PageMargins,
+)
+from navyfox.formats import (
+    ParagraphBorder as ParagraphBorder,
 )
 from navyfox.formats import (
     ParagraphBorders as ParagraphBorders,
@@ -48,6 +57,9 @@ from navyfox.formats import (
 )
 from navyfox.formats import (
     SpacingFormat as SpacingFormat,
+)
+from navyfox.formats import (
+    TableBorder as TableBorder,
 )
 from navyfox.formats import (
     TableBorders as TableBorders,

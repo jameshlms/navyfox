@@ -7,6 +7,7 @@ All instances are mutable unless otherwise noted.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Literal
 
@@ -79,11 +80,21 @@ class Border:
     spacing: float = 0.0
     #: Whether a drop-shadow is applied to the border.
     shadow: bool = False
+    _on_change: Callable[[str, object], None] | None = field(
+        default=None, repr=False, compare=False
+    )
+
+    def __setattr__(self, name: str, value: object) -> None:
+        object.__setattr__(self, name, value)
+        if name != "_on_change":
+            callback = self._on_change
+            if callback is not None:
+                callback(name, value)
 
 
 @dataclass
-class ParagraphBorders:
-    """All four border sides of a paragraph."""
+class ParagraphBorder:
+    """The four border sides of a paragraph."""
 
     top: Border = field(default_factory=Border)
     bottom: Border = field(default_factory=Border)
@@ -92,7 +103,7 @@ class ParagraphBorders:
 
 
 @dataclass
-class TableBorders:
+class TableBorder:
     """Outer and inner border lines of a table."""
 
     #: Top outer edge.
@@ -104,19 +115,56 @@ class TableBorders:
     #: Right outer edge.
     right: Border = field(default_factory=Border)
     #: Horizontal rules between rows.
-    inside_h: Border = field(default_factory=Border)
+    inside_horizontal: Border = field(default_factory=Border)
     #: Vertical rules between columns.
-    inside_v: Border = field(default_factory=Border)
+    inside_vertical: Border = field(default_factory=Border)
 
 
 @dataclass
-class CellBorders:
+class CellBorder:
     """Four border sides of a table cell."""
 
     top: Border = field(default_factory=Border)
     bottom: Border = field(default_factory=Border)
     left: Border = field(default_factory=Border)
     right: Border = field(default_factory=Border)
+
+
+# Deprecated compatibility aliases.
+ParagraphBorders = ParagraphBorder
+TableBorders = TableBorder
+CellBorders = CellBorder
+
+
+@dataclass
+class ImageOutline:
+    """The single outline applied to an image shape."""
+
+    style: Literal["single", "double", "dotted", "dashed", "wave", "none"] = "none"
+    width: float = 0.0
+    color: str = "auto"
+
+
+def _coerce_border(value: Border | Mapping[str, object]) -> Border:
+    if isinstance(value, Border):
+        return value
+    if isinstance(value, Mapping):
+        return Border(**value)
+    raise TypeError(f"border sides must be Border or dict, got {type(value).__name__}")
+
+
+def coerce_border_group[T](
+    value: T | Mapping[str, Border | Mapping[str, object]], cls: type[T]
+) -> T:
+    if isinstance(value, cls):
+        return value
+    if not isinstance(value, Mapping):
+        raise TypeError(f"border must be {cls.__name__} or dict, got {type(value).__name__}")
+    fields = {name: _coerce_border(side) for name, side in value.items()}
+    try:
+        return cls(**fields)
+    except TypeError as exc:
+        raise TypeError(f"Invalid {cls.__name__} mapping: {exc}") from exc
 
 
 @dataclass

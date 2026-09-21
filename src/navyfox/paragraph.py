@@ -14,6 +14,7 @@ from navyfox._proxy.descriptors import (
     IntProperty,
     StringProperty,
 )
+from navyfox.formats import Border, ParagraphBorder, coerce_border_group
 
 if TYPE_CHECKING:
     from navyfox.hyperlink import Hyperlink
@@ -35,6 +36,7 @@ class _ParagraphFormat(TypedDict, total=False):
     indent_hanging: float
     list_style: Literal["bullet", "number"]
     list_level: int
+    border: ParagraphBorder
 
 
 class Paragraph(Element):
@@ -63,6 +65,78 @@ class Paragraph(Element):
     )
     list_level = IntProperty("list_level", default=0)  # 0–8
     is_horizontal_rule = BoolProperty("_horizontal_line")
+
+    @property
+    def border(self) -> ParagraphBorder:
+        if not self.is_live:
+            return self._get_data().setdefault("border", ParagraphBorder())
+        self._check_valid()
+        borders = ParagraphBorder(
+            **{
+                side: Border(
+                    style=self._get_lib().get_str(self._require_native, f"border_{side}_style")
+                    or "none",
+                    width=self._get_lib().get_float(self._require_native, f"border_{side}_width"),
+                    color=self._get_lib().get_str(self._require_native, f"border_{side}_color")
+                    or "auto",
+                    spacing=self._get_lib().get_float(self._require_native, f"border_{side}_spacing"),
+                    shadow=bool(self._get_lib().get_int(self._require_native, f"border_{side}_shadow")),
+                )
+                for side in ("top", "bottom", "left", "right")
+            }
+        )
+        self._bind_borders(borders)
+        return borders
+
+    @border.setter
+    def border(self, value: ParagraphBorder | dict[str, Border | dict[str, object]]) -> None:
+        value = coerce_border_group(value, ParagraphBorder)
+        self._bind_borders(value)
+        if self.is_live:
+            self._check_valid()
+            pending: dict[str, Any] = {}
+            for side in ("top", "bottom", "left", "right"):
+                border = getattr(value, side)
+                pending.update(self._border_changes(side, border))
+            self._get_lib().set_many(self._require_native, pending)
+        else:
+            self._get_data()["border"] = value
+
+    @property
+    def borders(self) -> ParagraphBorder:
+        """Deprecated alias for :attr:`border`."""
+        return self.border
+
+    @borders.setter
+    def borders(self, value: ParagraphBorder) -> None:
+        self.border = value
+
+    def _border_changes(self, side: str, border: Border) -> dict[str, Any]:
+        return {
+            f"border_{side}_style": border.style,
+            f"border_{side}_width": border.width,
+            f"border_{side}_color": border.color,
+            f"border_{side}_spacing": border.spacing,
+            f"border_{side}_shadow": int(border.shadow),
+        }
+
+    def _bind_borders(self, borders: ParagraphBorder) -> None:
+        for side in ("top", "bottom", "left", "right"):
+            border = getattr(borders, side)
+            border._on_change = lambda name, value, side=side: self._border_changed(
+                side, name, value
+            )
+
+    def _border_changed(self, side: str, name: str, value: object) -> None:
+        if name == "_on_change":
+            return
+        if not self.is_live:
+            return
+        self._check_valid()
+        property_name = f"border_{side}_{name}"
+        if name == "shadow":
+            value = int(bool(value))
+        self._get_lib().set_many(self._require_native, {property_name: value})
 
     @property
     def text(self) -> str:
@@ -99,6 +173,8 @@ class Paragraph(Element):
         indent_hanging: float = 0.0,
         list_style: Literal["bullet", "number"] | None = None,
         list_level: int = 0,
+        border: ParagraphBorder | dict[str, Border | dict[str, object]] | None = None,
+        borders: ParagraphBorder | dict[str, Border | dict[str, object]] | None = None,
     ) -> None:
         from navyfox.run import Run
 
@@ -138,6 +214,12 @@ class Paragraph(Element):
             data["list_style"] = list_style
         if list_level:
             data["list_level"] = int(list_level)
+        if border is None:
+            border = borders
+        if border is not None:
+            border = coerce_border_group(border, ParagraphBorder)
+            data["border"] = border
+            self._bind_borders(border)
         self._data = data
 
     @property
@@ -234,7 +316,11 @@ class Paragraph(Element):
 
     def format(self, **kwargs: Unpack[_ParagraphFormat]) -> Self:
         """Set multiple paragraph properties in a single FFI call and return self."""
-        self._apply_changes(dict(kwargs))
+        changes = dict(kwargs)
+        border = changes.pop("border", None)
+        self._apply_changes(changes)
+        if border is not None:
+            self.border = border
         return self
 
     @override
@@ -243,6 +329,20 @@ class Paragraph(Element):
             data = dict(self._data)
             if "runs" in data:
                 data["runs"] = [r.copy() for r in data["runs"]]
+            if "border" in data:
+                borders = data["border"]
+                data["border"] = ParagraphBorder(
+                    **{
+                        side: Border(
+                            style=getattr(borders, side).style,
+                            width=getattr(borders, side).width,
+                            color=getattr(borders, side).color,
+                            spacing=getattr(borders, side).spacing,
+                            shadow=getattr(borders, side).shadow,
+                        )
+                        for side in ("top", "bottom", "left", "right")
+                    }
+                )
             return data
         return {
             "style": self.style,
@@ -258,6 +358,18 @@ class Paragraph(Element):
             "indent_hanging": self.indent_hanging,
             "list_style": self.list_style,
             "list_level": self.list_level,
+            "border": ParagraphBorder(
+                **{
+                    side: Border(
+                        style=getattr(self.border, side).style,
+                        width=getattr(self.border, side).width,
+                        color=getattr(self.border, side).color,
+                        spacing=getattr(self.border, side).spacing,
+                        shadow=getattr(self.border, side).shadow,
+                    )
+                    for side in ("top", "bottom", "left", "right")
+                }
+            ),
             "runs": [r.copy() for r in self.runs],
         }
 

@@ -336,6 +336,38 @@ run = Run(
 rule = HorizontalRule(line_style="double", line_width=1.5, line_color="#333333")
 ```
 
+Paragraph borders can be set on construction or edited after a paragraph is
+attached to a document. Each side supports `style`, `width` (points), `color`,
+`spacing` (points), and `shadow`:
+
+```python
+from navyfox import Border, Paragraph, ParagraphBorder
+
+para = Paragraph(
+    "Notice",
+    border=ParagraphBorder(
+        bottom=Border(style="double", width=1.5, color="4472C4", spacing=2)
+    ),
+)
+para.border.top.style = "dotted"
+
+# A partial dictionary is also accepted.
+para.border = {"bottom": {"style": "double", "width": 1.5}}
+
+Tables and cells use their corresponding border groupings, while images have
+a single outline:
+
+```python
+from navyfox import CellBorder, ImageOutline, TableBorder
+
+table = Table(2, 2, border=TableBorder(
+    inside_horizontal=Border(style="single", width=0.5),
+))
+table.cell(0, 0).border = CellBorder(left=Border(style="double"))
+image.outline = ImageOutline(style="single", width=1.5)
+```
+```
+
 ### Fluent chaining
 
 All setters on `Run` and `Paragraph` return `self`, so you can chain calls:

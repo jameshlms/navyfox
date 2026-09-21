@@ -8,11 +8,13 @@ In OpenXML an image is stored as ``<w:drawing>`` inside a ``<w:r>`` run, so
 from __future__ import annotations
 
 import mimetypes
+from collections.abc import Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, override
+from typing import TYPE_CHECKING, Any, Literal, cast, override
 
 from navyfox._proxy.base import Element, ElementState
 from navyfox._proxy.descriptors import FloatProperty, StringProperty
+from navyfox.formats import ImageOutline
 
 if TYPE_CHECKING:
     from navyfox._native.handle import Handle
@@ -31,6 +33,24 @@ _CONTENT_TYPES: dict[str, str] = {
     ".emf": "image/x-emf",
     ".wmf": "image/x-wmf",
 }
+_OUTLINE_STYLES = ("single", "double", "dotted", "dashed", "wave", "none")
+_OutlineStyle = Literal["single", "double", "dotted", "dashed", "wave", "none"]
+
+
+def _coerce_outline(value: ImageOutline | Mapping[str, object]) -> ImageOutline:
+    if isinstance(value, ImageOutline):
+        return value
+    style = value.get("style", "none")
+    width = value.get("width", 0.0)
+    color = value.get("color", "auto")
+    if (
+        not isinstance(style, str)
+        or style not in _OUTLINE_STYLES
+        or not isinstance(width, (float, int))
+        or not isinstance(color, str)
+    ):
+        raise TypeError("ImageOutline mapping has invalid style, width, or color")
+    return ImageOutline(style=cast(_OutlineStyle, style), width=float(width), color=color)
 
 
 def _guess_content_type(path: Path) -> str:
@@ -75,6 +95,21 @@ class Image(Element):
     width = FloatProperty("width", default=0.0)  # inches
     height = FloatProperty("height", default=0.0)  # inches
 
+    @property
+    def outline(self) -> ImageOutline:
+        data = self._get_data()
+        outline = data.get("outline")
+        if outline is None:
+            outline = ImageOutline()
+            data["outline"] = outline
+        if not isinstance(outline, ImageOutline):
+            raise TypeError(f"Invalid image outline value: {type(outline).__name__}")
+        return outline
+
+    @outline.setter
+    def outline(self, value: ImageOutline | Mapping[str, object]) -> None:
+        self._get_data()["outline"] = _coerce_outline(value)
+
     def __init__(
         self,
         src: str | Path | None = None,
@@ -84,6 +119,7 @@ class Image(Element):
         width: float = 0.0,
         height: float = 0.0,
         alt_text: str = "",
+        outline: ImageOutline | Mapping[str, object] | None = None,
     ) -> None:
         """
         Args:
@@ -124,6 +160,8 @@ class Image(Element):
             d["height"] = height
         if alt_text:
             d["alt_text"] = alt_text
+        if outline is not None:
+            d["outline"] = _coerce_outline(outline)
 
         self._data = d
 

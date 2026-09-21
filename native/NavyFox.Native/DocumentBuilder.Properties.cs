@@ -47,8 +47,38 @@ internal static unsafe partial class DocumentBuilder
             case "_horizontal_line":
                 return pp?.ParagraphBorders?.GetFirstChild<BottomBorder>() is not null ? 1 : 0;
             default:
+                if (name.StartsWith("border_") && name.EndsWith("_shadow"))
+                    return GetParaBorder(para, name[7..^7])?.Shadow is not null ? 1 : 0;
                 return -2;
         }
+    }
+
+    private static BorderType? GetParaBorder(Paragraph para, string side)
+    {
+        var borders = para.ParagraphProperties?.ParagraphBorders;
+        return side switch
+        {
+            "top" => borders?.GetFirstChild<TopBorder>(),
+            "bottom" => borders?.GetFirstChild<BottomBorder>(),
+            "left" => borders?.GetFirstChild<LeftBorder>(),
+            "right" => borders?.GetFirstChild<RightBorder>(),
+            _ => null
+        };
+    }
+
+    private static BorderType EnsureParaBorder(Paragraph para, string side)
+    {
+        para.ParagraphProperties ??= new ParagraphProperties();
+        para.ParagraphProperties.ParagraphBorders ??= new ParagraphBorders();
+        var borders = para.ParagraphProperties.ParagraphBorders;
+        return side switch
+        {
+            "top" => borders.GetFirstChild<TopBorder>() ?? borders.AppendChild(new TopBorder()),
+            "bottom" => borders.GetFirstChild<BottomBorder>() ?? borders.AppendChild(new BottomBorder()),
+            "left" => borders.GetFirstChild<LeftBorder>() ?? borders.AppendChild(new LeftBorder()),
+            "right" => borders.GetFirstChild<RightBorder>() ?? borders.AppendChild(new RightBorder()),
+            _ => throw new ArgumentException($"Unknown paragraph border side: {side}")
+        };
     }
 
     private static int GetRunInt(Run run, string name)
@@ -121,6 +151,11 @@ internal static unsafe partial class DocumentBuilder
                 return 0;
         }
 
+        if (name.StartsWith("border_") && name.EndsWith("_shadow"))
+        {
+            EnsureParaBorder(para, name[7..^7]).Shadow = value == 1;
+            return 0;
+        }
         if (name != "_horizontal_line") return -1;
         if (value == 1)
         {
@@ -240,6 +275,10 @@ internal static unsafe partial class DocumentBuilder
             }
         }
 
+        if (name.StartsWith("border_") && name.EndsWith("_width"))
+            return (GetParaBorder(para, name[7..^6])?.Size?.Value ?? 0U) / 8.0;
+        if (name.StartsWith("border_") && name.EndsWith("_spacing"))
+            return GetParaBorder(para, name[7..^8])?.Space?.Value ?? 0U;
         if (name != "hr_width") return double.NaN;
         var bottom = pp?.ParagraphBorders?.GetFirstChild<BottomBorder>();
         if (bottom is null) return 0.0;
@@ -327,6 +366,16 @@ internal static unsafe partial class DocumentBuilder
                 return 0;
             }
             default:
+                if (name.StartsWith("border_") && name.EndsWith("_width"))
+                {
+                    EnsureParaBorder(para, name[7..^6]).Size = (uint)Math.Round(value * 8);
+                    return 0;
+                }
+                if (name.StartsWith("border_") && name.EndsWith("_spacing"))
+                {
+                    EnsureParaBorder(para, name[7..^8]).Space = (uint)Math.Round(value);
+                    return 0;
+                }
                 return -1;
         }
     }
@@ -409,6 +458,19 @@ internal static unsafe partial class DocumentBuilder
                 return bottom?.Color?.Value ?? "auto";
             }
             default:
+                if (name.StartsWith("border_") && name.EndsWith("_style"))
+                {
+                    var val = GetParaBorder(para, name[7..^6])?.Val?.Value;
+                    if (val is null) return "none";
+                    if (val == BorderValues.Double) return "double";
+                    if (val == BorderValues.Dotted) return "dotted";
+                    if (val == BorderValues.Dashed) return "dashed";
+                    if (val == BorderValues.Wave) return "wave";
+                    if (val == BorderValues.Nil) return "none";
+                    return "single";
+                }
+                if (name.StartsWith("border_") && name.EndsWith("_color"))
+                    return GetParaBorder(para, name[7..^6])?.Color?.Value ?? "auto";
                 return null;
         }
     }
@@ -605,6 +667,24 @@ internal static unsafe partial class DocumentBuilder
                 return 0;
             }
             default:
+                if (name.StartsWith("border_") && name.EndsWith("_style"))
+                {
+                    EnsureParaBorder(para, name[7..^6]).Val = value switch
+                    {
+                        "double" => BorderValues.Double,
+                        "dotted" => BorderValues.Dotted,
+                        "dashed" => BorderValues.Dashed,
+                        "wave" => BorderValues.Wave,
+                        "none" => BorderValues.Nil,
+                        _ => BorderValues.Single
+                    };
+                    return 0;
+                }
+                if (name.StartsWith("border_") && name.EndsWith("_color"))
+                {
+                    EnsureParaBorder(para, name[7..^6]).Color = value;
+                    return 0;
+                }
                 return -1;
         }
     }

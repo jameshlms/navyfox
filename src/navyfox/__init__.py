@@ -25,16 +25,20 @@ from navyfox.errors import (
 )
 from navyfox.formats import (
     Border,
+    CellBorder,
     CellBorders,
     CellMargin,
     ColumnFormat,
+    ImageOutline,
     IndentFormat,
     ListFormat,
     PageMargins,
+    ParagraphBorder,
     ParagraphBorders,
     RGBColor,
     Shading,
     SpacingFormat,
+    TableBorder,
     TableBorders,
 )
 from navyfox.hyperlink import Hyperlink
@@ -126,8 +130,12 @@ __all__ = [
     "Length",
     "Border",
     "ParagraphBorders",
+    "ParagraphBorder",
+    "TableBorder",
     "TableBorders",
+    "CellBorder",
     "CellBorders",
+    "ImageOutline",
     "Shading",
     "IndentFormat",
     "SpacingFormat",

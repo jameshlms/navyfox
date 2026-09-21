@@ -45,6 +45,7 @@ class Border:
     color: str
     spacing: float
     shadow: bool
+    _on_change: object
     def __init__(
         self,
         style: Literal["single", "double", "dotted", "dashed", "wave", "none"] = ...,
@@ -54,7 +55,7 @@ class Border:
         shadow: bool = ...,
     ) -> None: ...
 
-class ParagraphBorders:
+class ParagraphBorder:
     top: Border
     bottom: Border
     left: Border
@@ -67,24 +68,24 @@ class ParagraphBorders:
         right: Border = ...,
     ) -> None: ...
 
-class TableBorders:
+class TableBorder:
     top: Border
     bottom: Border
     left: Border
     right: Border
-    inside_h: Border
-    inside_v: Border
+    inside_horizontal: Border
+    inside_vertical: Border
     def __init__(
         self,
         top: Border = ...,
         bottom: Border = ...,
         left: Border = ...,
         right: Border = ...,
-        inside_h: Border = ...,
-        inside_v: Border = ...,
+        inside_horizontal: Border = ...,
+        inside_vertical: Border = ...,
     ) -> None: ...
 
-class CellBorders:
+class CellBorder:
     top: Border
     bottom: Border
     left: Border
@@ -95,6 +96,21 @@ class CellBorders:
         bottom: Border = ...,
         left: Border = ...,
         right: Border = ...,
+    ) -> None: ...
+
+ParagraphBorders = ParagraphBorder
+TableBorders = TableBorder
+CellBorders = CellBorder
+
+class ImageOutline:
+    style: Literal["single", "double", "dotted", "dashed", "wave", "none"]
+    width: float
+    color: str
+    def __init__(
+        self,
+        style: Literal["single", "double", "dotted", "dashed", "wave", "none"] = ...,
+        width: float = ...,
+        color: str = ...,
     ) -> None: ...
 
 class Shading:
